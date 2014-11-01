@@ -1,76 +1,65 @@
+
+`include "alu_if.vh"
 `include "cpu_types_pkg.vh"
 
 import cpu_types_pkg::*;
 
-module alu(
-        input logic [3:0] ALUOP,
-        input logic [31:0] Port_A,
-        input logic [31:0] Port_B,
-        output logic negative,
-        output logic overflow,
-        output logic [31:0] output_port,
-        output logic zero
-    );
+module alu
+  (
+   alu_if.alum aluif
+   );
 
-
-assign zero = (output_port == 32'h0 ? 1'b1 : 1'b0);
-assign overflow = (Port_A[31] == Port_B[31] ? (Port_A[31]^output_port[31]) :
-1'b0); //overflow if output has different sign than operands
-assign negative = output_port[31];
-
-always_comb begin : decoder
-    casez (ALUOP)
-        default: begin
-            output_port <= 32'b0;
-        end
-        ALU_SLL: begin
-            //Logical Shift Left Port A by Port B
-            //TODO: if Port B is larger than 32 or other cases
-            output_port = Port_A << Port_B;
-        end
-        ALU_SRL: begin
-            //Logical Shift Right similar to LSL
-            output_port = Port_A >> Port_B;
-        end
-        ALU_AND: begin
-            output_port = Port_B & Port_A;
-        end
-        ALU_OR: begin
-            output_port = Port_B | Port_A;
-        end
-        ALU_XOR: begin
-            output_port = Port_B ^ Port_A;
-        end
-        ALU_SLT: begin
-            //Set if less than
-            if ($signed(Port_A) < $signed(Port_B)) begin
-               output_port = 1'b1;
-            end else begin
-               output_port = 1'b0;
-            end
-
-        end
-        ALU_SLTU: begin
-           if ( $unsigned(Port_A) < $unsigned(Port_B) ) begin
-               output_port = 1'b1;
-           end else begin
-               output_port = 1'b0;
-           end
-        end
-        ALU_ADD: begin
-            //Signed Add
-            output_port = Port_A + Port_B;
-        end
-        ALU_SUB: begin
-           //Signed Subtract
-            output_port = Port_A - Port_B;
-        end
-        ALU_NOR: begin
-            //#overflow = 1'b0;
-            output_port = ~(Port_B | Port_A);
-        end
-    endcase
-end
-
+   logic carry_bit;   
+   
+   always_comb begin
+      casez(aluif.opcode)
+    ALU_ADD: begin
+       {aluif.flag_v, aluif.res} = aluif.op1 + aluif.op2;
+    end
+    ALU_SUB: begin
+       {aluif.flag_v, aluif.res} = aluif.op1 - aluif.op2;
+    end
+    ALU_AND: begin
+       aluif.res = aluif.op1 & aluif.op2;
+       aluif.flag_v = 0;
+    end
+    ALU_OR: begin
+       aluif.res = aluif.op1 | aluif.op2;
+       aluif.flag_v = 0;
+    end
+    ALU_XOR: begin
+       aluif.res = aluif.op1 ^ aluif.op2;
+       aluif.flag_v = 0;
+    end
+    ALU_NOR: begin
+       aluif.res = ~(aluif.op1 | aluif.op2);
+       aluif.flag_v = 0;
+    end
+    ALU_SLT: begin
+       aluif.res = $signed(aluif.op1) < $signed(aluif.op2) ? 
+               32'b01 : 32'b0;
+       aluif.flag_v = 0;
+    end
+    ALU_SLTU: begin
+       aluif.res = $unsigned(aluif.op1) < $unsigned(aluif.op2) ?
+               32'b01 : 32'b0;
+       aluif.flag_v = 0;
+    end
+    ALU_SLL: begin
+       aluif.res = aluif.op1 << aluif.shamt;
+       aluif.flag_v = 0;
+    end
+    ALU_SRL: begin
+       aluif.res = aluif.op1 >> aluif.shamt;
+       aluif.flag_v = 0;
+    end
+    default: begin
+       aluif.res = 32'b0;
+       aluif.flag_v = 0;
+    end
+      endcase
+      
+      aluif.flag_z = aluif.res ? 0 : 1; //Zero flag
+      aluif.flag_n = aluif.res[$size(aluif.res) - 1] ? 1 : 0; //Neg flag
+   end
 endmodule
-

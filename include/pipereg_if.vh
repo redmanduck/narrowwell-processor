@@ -31,16 +31,18 @@ interface pipereg_id_ex;
    logic bubble_in, bubble_out;
    logic BranchNEQ_out,BranchNEQ_in;
    logic [2:0] PCSrc_out, PCSrc_in;
+   logic [1:0] beq_in, beq_out;
+   logic dREN_out, dREN_in;
 
   modport idex(
      input WEN, rs_in, pcn_in, flush, WB_MemToReg_in, immediate26_in,immediate_in, M_Jump_in, BranchNEQ_in,
      shamt_in, EX_ALUSrc2_in, WB_RegWrite_in, M_Branch_in, M_MemRead_in, bubble_in,PCSrc_in, 
-     M_MemWrite_in, EX_RegDst_in, EX_ALUOp_in, EX_ALUSrc_in, next_address_in,
-     rdat1_in, rdat2_in, sign_ext32_in, rt_in, rd_in, halt_in,
+     M_MemWrite_in, EX_RegDst_in, EX_ALUOp_in, EX_ALUSrc_in, next_address_in, beq_in,
+     rdat1_in, rdat2_in, sign_ext32_in, rt_in, rd_in, halt_in,dREN_in,
      output WB_MemToReg_out, pcn_out, rs_out, WB_RegWrite_out, immediate26_out,immediate_out, BranchNEQ_out,
      shamt_out, EX_ALUSrc2_out, M_Branch_out, M_MemRead_out, M_MemWrite_out, M_Jump_out, PCSrc_out,
      EX_RegDst_out, EX_ALUOp_out, EX_ALUSrc_out, next_address_out, rdat1_out, bubble_out,
-     rdat2_out, sign_ext32_out, rt_out, rd_out, halt_out
+     rdat2_out, sign_ext32_out, rt_out, rd_out, halt_out, beq_out, dREN_out
   );
 endinterface
 
@@ -70,22 +72,28 @@ interface pipereg_ex_mem;
    logic  WB_RegWrite_out, M_Branch_out, M_MemRead_out, M_MemWrite_out;
    logic alu_zero_in, alu_zero_out;
    logic halt_in, halt_out;
-   logic [1:0] WB_MemToReg_in, WB_MemToReg_out;
+   logic [1:0] WB_MemToReg_in, WB_MemToReg_out, EX_RegDst_in, EX_RegDst_out;
    word_t pcn_in, pcn_out;
    word_t alu_output_in, alu_output_out;
    word_t adder_result_in, adder_result_out;
 
+   logic [2:0] PCSrc_in, PCSrc_out;
    word_t regfile_rdat2_in, regfile_rdat2_out;
 
    logic [4:0] reg_instr_in, reg_instr_out;
 
+   logic dREN_in, dREN_out;
+   logic [4:0] rt_in, rt_out, rd_in, rd_out;
+
+   word_t dmemstore_out, dmemstore_in;
+
   modport xmem (
-     input WEN, flush, pcn_in, WB_MemToReg_in, WB_RegWrite_in, M_Branch_in,
-     M_MemRead_in, M_MemWrite_in, alu_zero_in, alu_output_in, halt_in,
-     adder_result_in, regfile_rdat2_in, reg_instr_in,
-     output WB_MemToReg_out, pcn_out, WB_RegWrite_out, M_Branch_out,
-     M_MemRead_out, M_MemWrite_out, alu_zero_out, alu_output_out,
-     adder_result_out, regfile_rdat2_out, reg_instr_out, halt_out
+     input WEN, flush, pcn_in, WB_MemToReg_in, WB_RegWrite_in, M_Branch_in,dREN_in, PCSrc_in,
+     M_MemRead_in, M_MemWrite_in, alu_zero_in, alu_output_in, halt_in, rt_in, dmemstore_in, EX_RegDst_in,
+     adder_result_in, regfile_rdat2_in, reg_instr_in, rd_in,
+     output WB_MemToReg_out, pcn_out, WB_RegWrite_out, M_Branch_out, rd_out,
+     M_MemRead_out, M_MemWrite_out, alu_zero_out, alu_output_out,dREN_out, rt_out, EX_RegDst_out,
+     adder_result_out, regfile_rdat2_out, reg_instr_out, halt_out, dmemstore_out, PCSrc_out
   );
 endinterface
 
@@ -103,11 +111,12 @@ interface pipereg_mem_wb;
   logic [4:0] reg_instr_in, reg_instr_out;
   logic M_MemRead_in, M_MemRead_out;
    word_t alu_output_in, alu_output_out;
+   logic dREN_in, dREN_out;
   //reg_instr IS THE REGISTER DESTINATION
   modport mwb(
-    input WEN, flush, pcn_in, dmemload_in, dmemaddr_in,
+    input WEN, flush, pcn_in, dmemload_in, dmemaddr_in, dREN_in,
     WB_RegWrite_in, WB_MemToReg_in, alu_output_in, reg_instr_in, halt_in, M_MemRead_in,
-    output WB_RegWrite_out, pcn_out, alu_output_out, halt_out,
+    output WB_RegWrite_out, pcn_out, alu_output_out, halt_out, dREN_out,
     WB_MemToReg_out, dmemload_out, dmemaddr_out, reg_instr_out, M_MemRead_out
   );
 endinterface

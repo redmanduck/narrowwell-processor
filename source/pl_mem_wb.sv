@@ -17,6 +17,8 @@ module pl_mem_wb(
    logic [4:0] reg_instr;
    logic halt;
    word_t pcn;
+   logic dREN;
+   
    assign mwb.pcn_out = pcn;
    assign mwb.WB_RegWrite_out = WB_RegWrite;
    assign mwb.WB_MemToReg_out = WB_MemToReg;
@@ -25,6 +27,7 @@ module pl_mem_wb(
    assign mwb.alu_output_out = alu_output;
    assign mwb.reg_instr_out = reg_instr;
    assign mwb.halt_out = halt;
+   assign mwb.dREN_out = dREN;
    assign mwb.M_MemRead_out = M_MemRead;
 
    always_ff @(posedge CLK, negedge nRST) begin
@@ -34,6 +37,7 @@ module pl_mem_wb(
          WB_RegWrite <= '0;
          M_MemRead <= '0;
          pcn <= '0;
+         dREN <= '0;
          alu_output <= '0;
          reg_instr <= '0;
          WB_MemToReg <= '0;
@@ -41,11 +45,13 @@ module pl_mem_wb(
       end else if(mwb.flush == 1'b1) begin
          WB_RegWrite <= 0;
          pcn <= '0;
+         dREN <= '0;
          M_MemRead <= '0;
       end else if(mwb.WEN == 1'b1) begin
          dmemload <= mwb.dmemload_in;
          halt <= mwb.halt_in;
          pcn <= mwb.pcn_in;
+         dREN <= mwb.dREN_in;
          M_MemRead <= mwb.M_MemRead_in;
          dmemaddr <= mwb.dmemaddr_in;
          WB_RegWrite <= mwb.WB_RegWrite_in;

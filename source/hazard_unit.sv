@@ -10,16 +10,16 @@ module hazard_unit(
 );
 
 // stall
-  always_comb begin
+  // always_comb begin
     // hzif.stall_ifid = hzif.halt;
-     hzif.stall_ifid = ~((~hzif.halt | hzif.branch_taken | hzif.jump) & hzif.stall_idex);
+  assign hzif.stall_ifid = !((!hzif.halt || hzif.branch_taken || hzif.jump) && !hzif.stall_idex);
      //hzif.stall_idex= ~(hzif.EMen & ~hzif.loading); //if there is a reg value in MEM that you need in EX, stall F,D stages while it loads.
-     hzif.stall_idex = ~(hzif.stall_xmem & ~hzif.load);
+    assign hzif.stall_idex = !(!hzif.stall_xmem && !hzif.load);
     // hzif.stall_idex = (hzif.dmemREN || hzif.dmemWEN ? !hzif.dhit : 0);
      //hzif.stall_xmem = (hzif.dmemREN || hzif.dmemWEN ? !hzif.dhit : 0); //wait for memory operations
-     hzif.stall_xmem = (~hzif.dhit & (hzif.dmemWEN | hzif.dmemREN)); // wait for cache miss
-     hzif.stall_wb = '0;  // don't stall
-  end  // end of always
+    assign hzif.stall_xmem = (!hzif.dhit && (hzif.dmemWEN || hzif.dmemREN)); // wait for cache miss
+    assign hzif.stall_wb = '0;  // don't stall
+  // end  // end of always
 
 
 // flush
@@ -33,6 +33,9 @@ module hazard_unit(
      end else if(!hzif.halt && hzif.jump) begin
         hzif.flush_ifid = 1;
         hzif.flush_idex = 1;
+     end else begin
+        hzif.flush_ifid = 0;
+        hzif.flush_idex = 0;
      end
      //end else if(hzif.idex_rs == hzif.mwb_rd && (hzif.idex_rs && hzif.mwb_rd)) begin
         //hzif.stall_ifid = 1;

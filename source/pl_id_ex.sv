@@ -13,7 +13,7 @@ module pl_id_ex(
 
    
    logic M_Branch,M_Jump, M_MemRead, M_MemWrite, BranchNEQ;
-
+   logic [1:0] beq;
    //EX control signals
    logic [1:0] EX_RegDst, EX_ALUSrc, EX_ALUSrc2;
    aluop_t EX_ALUOp;
@@ -31,8 +31,9 @@ module pl_id_ex(
    logic halt;
    word_t pcn;
    logic bubble;
+   logic dREN;
 
-
+   assign idex.beq_out = beq;
    assign idex.M_Jump_out = M_Jump;
    assign idex.pcn_out = pcn;
    assign idex.WB_MemToReg_out = WB_MemToReg;
@@ -58,12 +59,15 @@ module pl_id_ex(
    assign idex.bubble_out = bubble;
    assign idex.BranchNEQ_out = BranchNEQ;
    assign idex.PCSrc_out = PCSrc;
+   assign idex.dREN_out = dREN;
    //nothing to flush
    always_ff @(posedge CLK, negedge nRST) begin
       if(!nRST) begin //or flush
          WB_MemToReg <= '0;
          WB_RegWrite <= '0;
          pcn <= '0;
+         beq <= '0;
+         dREN <= '0;
          M_Branch <= '0;
          M_MemRead <= '0;
          M_MemWrite <= '0;
@@ -91,20 +95,23 @@ module pl_id_ex(
         WB_RegWrite <= '0;
         M_Branch <= '0;
         pcn <= '0;
-        PCSrc <= 4;
+        beq <= '0;
+        PCSrc <= 0;
+        dREN <= 0;
         M_MemRead <= '0;
         M_MemWrite <= '0;
         M_Jump <= '0;
         BranchNEQ <= '0;
       end else if(idex.WEN == 1 && !idex.flush) begin
          $display("IDEX.Branch = %d", M_Branch);
-
+         dREN <= idex.dREN_in;
          WB_MemToReg <= idex.WB_MemToReg_in;
          WB_RegWrite <= idex.WB_RegWrite_in;
          halt <= idex.halt_in;
          pcn <= idex.pcn_in;
          shamt <= idex.shamt_in;
          bubble <= idex.bubble_in;
+         beq <= idex.beq_in;
          M_Branch <= idex.M_Branch_in;
          M_MemRead <= idex.M_MemRead_in;
          M_MemWrite <= idex.M_MemWrite_in;

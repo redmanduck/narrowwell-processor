@@ -3,6 +3,8 @@
 `include "cpu_types_pkg.vh"
 
 interface forward_unit_if;
+  import cpu_types_pkg::*;
+
   logic [4:0] ex_rs, ex_rt, ex_rd;
   logic [4:0] mem_rd, wb_rd;
   logic [4:0] id_rs, id_rt;
@@ -16,6 +18,7 @@ interface forward_unit_if;
   /* forwardA is the control signal choose which operand to feed in
   for alu operand A
    */
+  regbits_t mem_rt;
   logic [2:0] forwardA;
   /* forwardB is the control signal choose which operand to feed in
   for alu operand B
@@ -23,7 +26,7 @@ interface forward_unit_if;
   logic [2:0] forwardB;
 
   modport fwu(
-    input ex_RegDst, ex_rs, ex_rt,ex_rd, mem_rd, wb_rd, regWr, regRd, memWr, id_rt, id_rs,memRegWr,exRegWr,exMemWr,wbRegWr, wbMemRead, exMemRead,
+    input ex_RegDst, ex_rs, ex_rt,ex_rd, mem_rd, wb_rd, regWr, regRd, memWr, id_rt, id_rs,memRegWr,exRegWr,exMemWr,wbRegWr, wbMemRead, exMemRead, mem_rt,
     output forwardA, forwardB, forwardData,forwardR2, forwardR1
   );
 endinterface

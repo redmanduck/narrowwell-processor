@@ -1,7 +1,9 @@
+
 /*
   Pat Sabpisal
   ssabpisa@purdue.edu
 */
+
 `include "control_unit_if.vh"
 `include "cpu_types_pkg.vh"
 
@@ -17,7 +19,6 @@ module control_unit (
   assign cuif.funct = funct_t'(cuif.instruction[5:0]);
   assign cuif.immediate26 = cuif.instruction[25:0];
   assign cuif.immediate = cuif.instruction[15:0];
-
   assign cuif.rs = cuif.instruction[25:21];
   assign cuif.rt = cuif.instruction[20:16];
   assign cuif.rd = cuif.instruction[15:11];
@@ -33,24 +34,25 @@ module control_unit (
 
  always_comb begin : REG_DST
     casez(cuif.opcode)
-      XORI, LW, ORI, ADDIU, ANDI, LUI, LW, SLTI, SLTIU: cuif.RegDst = 2'b00;
-      JAL: cuif.RegDst = 2'b10;
-      default: cuif.RegDst = 2'b01;
+      XORI, LW, ORI, ADDIU, ANDI, LUI, LW, SLTI, SLTIU: cuif.RegDst = 1;
+      JAL: cuif.RegDst = 2;
+      RTYPE: cuif.RegDst = 0;
+      default: cuif.RegDst = 1;
     endcase
  end
 
-  always_comb begin : EXTOP
+  always_comb begin : ExtOp
     casez(cuif.opcode)
       ORI: cuif.ExtOp = 0;
       XORI: cuif.ExtOp = 0;
       ANDI: cuif.ExtOp = 0;
-      default: cuif.ExtOp = cuif.immediate[15];
+      default: cuif.ExtOp = 1; //cuif.immediate[15];
     endcase
   end
 
    always_comb begin : HALT_LOGIC
      if(cuif.opcode == HALT) begin
-      $display("HALTING");
+       $display("HALTING");
        cuif.halt = 1;
      end else begin
        cuif.halt = 0;
@@ -59,25 +61,16 @@ module control_unit (
 
 
    always_comb begin : PC_CONTROLS
-    cuif.Jump = 1'b0;
-    cuif.Branch = 1'b0;
-    cuif.BranchNEQ = 1'b0;
-    cuif.PCSrc = 4;
-    $display("Instruction decode = %h", cuif.instruction);
     if(cuif.opcode == RTYPE && cuif.funct == JR) begin
-       cuif.PCSrc = 0; //read Rs
-       cuif.Jump = 1'b1;
+       cuif.PCSrc = 1; 
     end else if(cuif.opcode == J || cuif.opcode == JAL) begin
-       cuif.PCSrc = 1; //Link for JAL occur above
-       cuif.Jump = 1'b1;
+       cuif.PCSrc = 2; 
     end else if(cuif.opcode == BEQ) begin
-       cuif.Branch = 1'b1;
-       //PCSrc is not resolved
+       cuif.PCSrc = 3; 
     end else if(cuif.opcode == BNE) begin
-       cuif.BranchNEQ = 1'b1;
-       //PCSrc is not resolved
+       cuif.PCSrc = 3; 
     end else begin
-       cuif.PCSrc = 4; 
+       cuif.PCSrc = 0; 
     end
   end
 
@@ -103,15 +96,25 @@ module control_unit (
     end
   end
 
+  
+   always_comb begin : ALU_SRC
+      casez (cuif.opcode)
+          RTYPE: cuif.ALUSrc = 0;
+          ORI, ANDI, XORI, ADDIU, SLTI, SLTIU, SW, LW: cuif.ALUSrc = 1; 
+          LUI: cuif.ALUSrc = 2;
+          default: cuif.ALUSrc = 0;
+      endcase
+   end
+
   always_comb begin : ALU_CONTROLS
     if (cuif.opcode == RTYPE) begin
       //do RTYPE operations
-      cuif.ALUSrc2 = 1'b0; //Doesnt matter if ALUSrc is 0
-      cuif.ALUSrc = 2'b0; //Register
+      // cuif.ALUSrc2 = 1'b0; //Doesnt matter if ALUSrc is 0
+      // cuif.ALUSrc = 2'b0; //Register
       cuif.ALUctr = ALU_ADD; //some useless default
       casez (cuif.funct)
         ADDU: cuif.ALUctr = ALU_ADD;
-        ADD:  cuif.ALUctr = ALU_ADD; //why is this not in asm -i
+        ADD:  cuif.ALUctr = ALU_ADD; 
         AND:  cuif.ALUctr = ALU_AND;
         JR:   cuif.ALUctr = ALU_ADD;
         NOR:  cuif.ALUctr = ALU_NOR;
@@ -120,13 +123,13 @@ module control_unit (
         SLTU: cuif.ALUctr = ALU_SLTU;
         SLL:  begin
           cuif.ALUctr = ALU_SLL;
-          cuif.ALUSrc = 1;
-          cuif.ALUSrc2 = 1'b1;
+          // cuif.ALUSrc = 1;
+          // cuif.ALUSrc2 = 1'b1;
         end
         SRL:  begin
           cuif.ALUctr = ALU_SRL;
-          cuif.ALUSrc = 1;
-          cuif.ALUSrc2 = 1'b1;
+          // cuif.ALUSrc = 1;
+          // cuif.ALUSrc2 = 1'b1;
         end
         SUBU: cuif.ALUctr = ALU_SUB;
         SUB: cuif.ALUctr = ALU_SUB;
@@ -136,21 +139,21 @@ module control_unit (
     end else begin
       //I-TYPES
       cuif.ALUctr = ALU_ADD;
-      cuif.ALUSrc2 = 1'b0; //Use Sign Extended Imm16
-      cuif.ALUSrc = 1; //Sign Extended Imm16
-      casez (cuif.opcode) // or funct?
+      // cuif.ALUSrc2 = 1'b0;
+      // cuif.ALUSrc = 1; 
+      casez (cuif.opcode) 
         ANDI: cuif.ALUctr = ALU_AND;
         ADDIU: cuif.ALUctr = ALU_ADD;
         BEQ: begin
            cuif.ALUctr = ALU_SUB;
-           cuif.ALUSrc = 0;
+           // cuif.ALUSrc = 0;
         end
         BNE: begin
           cuif.ALUctr = ALU_SUB;
-          cuif.ALUSrc = 0;
+          // cuif.ALUSrc = 0;
         end
         LUI: begin
-          cuif.ALUSrc = 2;
+          // cuif.ALUSrc = 2;
           cuif.ALUctr = ALU_ADD;
         end
         LW: cuif.ALUctr = ALU_ADD;
@@ -163,4 +166,5 @@ module control_unit (
       endcase
     end
   end
+  
 endmodule
