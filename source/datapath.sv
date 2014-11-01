@@ -50,7 +50,7 @@ module datapath (
   assign rfif.rsel1 = cuif.rs;
   assign rfif.rsel2 = cuif.rt;
   assign rfif.wsel  = mwb.reg_instr_out;
-  assign rfif.WEN   = mwb.dREN_out; //mwb.WB_RegWrite_out; 
+  assign rfif.WEN   = mwb.WB_RegWrite_out;  //mwb.dREN_out; 
 
 
    always_ff @ (posedge CLK, negedge nRST) begin
@@ -124,6 +124,8 @@ module datapath (
         default: pcif.branch_flag = 0;
       endcase
    end
+
+   assign pcif.branch_addr = idex.pcn_out + {14'b0, idex.immediate_out, 2'b0};
 
   /////////////////////////////// DECODE STAGE /////////////////////////////
 
@@ -279,7 +281,7 @@ module datapath (
    assign mwb.pcn_in = xmem.pcn_out;
    assign mwb.alu_output_in = xmem.alu_output_out;
    assign mwb.dmemload_in = dpif.dmemload;
-
+   assign mwb.WB_RegWrite_in = xmem.WB_RegWrite_out;
 
    always_comb begin : reg_instr_out
       casez (xmem.EX_RegDst_out)

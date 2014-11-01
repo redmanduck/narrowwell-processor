@@ -24,7 +24,7 @@ module program_counter (
 
    assign pcif.imemaddr = PC;
    /// diff , he did in datapath
-   assign pcif.branch_addr = PC + 4 + {14'b0, pcif.imm16,2'b0};
+  // assign pcif.branch_addr = PC + 4 + {14'b0, pcif.imm16,2'b0};
 
 
    //next state logic
