@@ -68,7 +68,7 @@ module datapath (
    assign hzif.dhit = dpif.dhit;
    assign hzif.halt = idex.halt_out;
    assign hzif.branch_taken = pcif.branch_flag;
-   assign hzif.jump = (idex.PCSrc_out == 2 || idex.PCSrc_out == 3) ? 1 : 0; ///**
+   assign hzif.jump = (idex.PCSrc_out == 2 ) ? 1 : 0; ///**
    assign hzif.dmemREN = xmem.dREN_out;
    assign hzif.dmemWEN = xmem.M_MemWrite_out;
    assign hzif.load = hzif.dmemREN &&  ((fwif.ex_rt == fwif.mem_rt) || (fwif.ex_rs == fwif.mem_rt)) ? 1:0;
@@ -80,7 +80,7 @@ module datapath (
    assign fwif.mem_rd = wsel_tmp; //*(*)
    assign fwif.wb_rd  = mwb.reg_instr_out; //=wsel
    assign fwif.memRegWr = xmem.WB_RegWrite_out;
-   assign fwif.wbRegWr  = mwb.dREN_out; //TODO: add iface
+   assign fwif.wbRegWr  = mwb.WB_RegWrite_out; 
    assign fwif.memWr = xmem.M_MemWrite_out;
 
   //////////////////////////////// PIPELINE LATCHES /////////////////////////
@@ -240,8 +240,8 @@ module datapath (
    assign idex.rdat1_in = rfif.rdat1;
    assign idex.rdat2_in = rfif.rdat2;
    assign idex.immediate_in =  (cuif.ExtOp ? {{16{cuif.immediate[15]}}, cuif.immediate} : {16'b0, cuif.immediate});  //here
-   // assign idex.immediate26_in = {{5{ifid.instr[25:0]}}, ifid.instr[25:0]};
-   assign idex.immediate26_in = $signed(cuif.immediate26);
+   assign idex.immediate26_in = {{5{cuif.immediate26}}, cuif.immediate26};
+   //assign idex.immediate26_in = $signed(cuif.immediate26);
    assign idex.EX_ALUOp_in = cuif.ALUctr;
    assign idex.EX_ALUSrc_in = cuif.ALUSrc;
    assign idex.shamt_in = cuif.shamt;

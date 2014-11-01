@@ -18,7 +18,7 @@ module hazard_unit(
     // hzif.stall_idex = (hzif.dmemREN || hzif.dmemWEN ? !hzif.dhit : 0);
      //hzif.stall_xmem = (hzif.dmemREN || hzif.dmemWEN ? !hzif.dhit : 0); //wait for memory operations
     assign hzif.stall_xmem = (!hzif.dhit && (hzif.dmemWEN || hzif.dmemREN)); // wait for cache miss
-    assign hzif.stall_wb = '0;  // don't stall
+    assign hzif.stall_wb = hzif.stall_xmem;  // don't stall
   // end  // end of always
 
 
