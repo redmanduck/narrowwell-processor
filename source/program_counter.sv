@@ -1,3 +1,12 @@
+/***
+program counter
+*/
+
+/// pc_cnt -> PC;
+/// pcEN  -> pc_en
+/// pc_regval -> rdata1;
+/// pcif.branchmux  -> branch_flag
+
 `include "pc_if.vh"
 `include "cpu_types_pkg.vh"
 
@@ -6,39 +15,39 @@ module program_counter (
    pc_if.pc pcif
 );
 
-   //TODO: make interface for pc
    import cpu_types_pkg::*;
-   word_t PC_next, PC_next_filtered;
-   word_t PC;
-   word_t pc_4;
 
-   assign pc_4 = PC + 4;
+   word_t PC_next;
+   word_t PC;
 
    parameter PC_INIT = 0;
 
    assign pcif.imemaddr = PC;
-   assign pcif.pc_plus_4 = pc_4;
+   /// diff , he did in datapath
+   assign pcif.branch_addr = PC + 4 + {14'b0, pcif.imm16,2'b0};
+
+
+   //next state logic
+   always_comb begin
+      casez (pcif.PCSrc)
+        0: PC_next = PC + 4;  // normal pc update
+        1: PC_next = pcif.rdat1;                    //JR
+        /// diff
+        //2: PC = {pc_4[31:28] , pcif.immediate26, 2'b0};  //JUMP, jal
+        2: PC_next = pcif.immediate26 << 2;  //JUMP, jal
+        /// diff
+        //{14'b0, pcif.immediate, 2'b0} + PC + 4; //BNE, BEQ
+        3: PC_next = pcif.branch_flag ? pcif.branch_addr : (PC + 4); //branch
+        default: PC_next = PC;                    //REGULAR
+      endcase
+   end // end of always
 
    always_ff @ (posedge CLK, negedge nRST) begin
-      PC <= PC;
-      $display("PCEN = %d", pcif.pc_en);
-      if(!nRST) begin
-         PC <= PC_INIT;
-      end else if (pcif.pc_en) begin
-        $display("PCSrc = %d", pcif.PCSrc);
-        // $display("IMM26 = %d", pcif.immediate26);
-
-        casez (pcif.PCSrc)
-          0: PC <= pcif.rdat1;                    //JR
-          1: PC <= {pc_4[31:28] , pcif.immediate26, 2'b0};  //JUMP
-          2: PC <= pcif.branch_addr;              //{14'b0, pcif.immediate, 2'b0} + PC + 4; //BNE, BEQ
-          default: PC <= pc_4;                    //REGULAR
-        endcase
-        $display("PC = %h", PC);
-        $display("JADDR %h",  {pc_4[31:28] , pcif.immediate26, 2'b0});
+      if (!nRST) begin
+        PC <= '0;
+      end else if(pcif.pc_en) begin
+        PC <= PC_next;
       end
-  end
-
-
+   end // end of always ff
 
 endmodule
