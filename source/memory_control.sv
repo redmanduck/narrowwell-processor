@@ -101,5 +101,4 @@ always_comb begin : priority_control_mux
       ccif.ramaddr = ccif.iaddr;
     end
 end
-
 endmodule

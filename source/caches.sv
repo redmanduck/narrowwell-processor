@@ -6,6 +6,7 @@
 */
 
 
+<<<<<<< HEAD
 // interfaces
 `include "datapath_cache_if.vh"
 `include "cache_control_if.vh"
