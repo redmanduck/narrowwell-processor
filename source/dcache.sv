@@ -27,7 +27,7 @@ module dcache (
   logic [total_set - 1 : 0] LRU;
   CacheWay [1:0] cway;
 
-  typedef enum logic [5:0] {idle, fetch1, fetch2, fetch_done, wb1, wb2, reset,  all_fetch_done, flush1, flush2, flush3, flush4, all_flushed, done_everything} StateType;
+  typedef enum logic [5:0] {idle, fetch1, fetch2, fetch_done, wb1, wb2, reset, all_fetch_done, flush1, flush2, flush3, flush4, all_flushed, done_everything} StateType;
 
 
   StateType state, next_state;
