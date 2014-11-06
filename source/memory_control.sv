@@ -1,14 +1,3 @@
-/*
-  Eric Villasenor
-  evillase@gmail.com
-
-  Pat Suppatach Sabpisal
-  ssabpisa@purdue.edu
-
-  this block is the coherence protocol
-  and artibtration for ram
-*/
-
 // interface include
 `include "cache_control_if.vh"
 
@@ -19,28 +8,212 @@ module memory_control (
   input CLK, nRST,
   cache_control_if.cc ccif
 );
-  // type import
-  import cpu_types_pkg::*;
+// type import
+import cpu_types_pkg::*;
 
-  // number of cpus for cc
-  parameter CPUS = 2;
-  parameter CPUID = 0;
+// number of cpus for cc
+parameter CPUS = 2;
+parameter CPUID = 0;
 
- /*
-    ccif <- dREN = cache data read enable
-    ccif <- dWEN = cache data write enable
-    ccif <- iREN = cache instruction read enable
-    ccif <- dstore = cache data store ??
-    ccif <- iaddr = cache instruction address
-    ccif <- daddr = data instruction address
 
-    ccif <- ramload = ram load
-    ccif <- ramstate = ram state
-    ...
-*/
+typedef enum {IDLE, ARBITRATE, SNOOP0, SNOOP1, WASTE0, WASTE1, WB0, WB1, FETCH0, FETCH1} u_state;
+
+u_state next_state, state;
+
+logic [1:0] busRdX, busRd;
+assign busRdX[0] = ccif.cctrans[0] && ccif.ccwrite[0];
+assign busRd[0] = ccif.cctrans[0] && !ccif.ccwrite[0];
+assign busRdX[1] = ccif.cctrans[1] && ccif.ccwrite[1];
+assign busRd[1] = ccif.cctrans[1] && !ccif.ccwrite[1];
+
+always_comb begin : NEXT_STATE
+  casez(state) 
+    IDLE: begin
+      if(ccif.cctrans[0] || ccif.cctrans[1]) begin
+        //there is a coherency stuff going on
+        next_state <= ARBITRATE;
+      end else begin
+        next_state <= IDLE;
+      end
+    end
+    ARBITRATE: begin 
+      if(ccif.dWEN[0] || ccif.dREN[0]) begin
+        next_state <= SNOOP0;
+      end else if (ccif.dREN[1] || ccif.dWEN[1]) begin
+        next_state <= SNOOP1;
+      end else begin
+        next_state <= IDLE;
+      end
+    end
+    SNOOP0: begin
+      if(!ccif.dWEN[1]) begin
+        //if cache 0 WEN went low, its done, move on
+        next_state <= WASTE0; 
+      end else begin
+        //wait 
+        next_state <= SNOOP0;
+      end
+    end
+    SNOOP1: begin
+      if(!ccif.dWEN[0]) begin
+        //if cache 0 WEN went low, its done, move on
+        next_state <= WASTE1; 
+      end else begin
+        //wait 
+        next_state <= SNOOP1;
+      end
+    end
+    WASTE0: begin
+      if(!ccif.dWEN[1]) begin
+        next_state <= WB0; //move forward when cache 0 is done
+      end else begin
+        next_state <= WASTE0; //wait
+      end
+    end
+    WASTE1: begin
+      if(!ccif.dWEN[0]) begin
+        next_state <= WB1; //move forward when cache 0 is done
+      end else begin
+        next_state <= WASTE1; //wait
+      end
+    end
+    FETCH0: begin
+      if(!ccif.dwait) begin
+        //Done fetch
+        next_state <= IDLE;
+      end else begin
+        next_state <= FETCH0;
+      end
+    end
+    FETCH1: begin
+      if(!ccif.dwait) begin
+        //Done fetch
+        next_state <= IDLE;
+      end else begin
+        next_state <= FETCH1;
+      end
+    end
+    WB0: begin
+      //do cache to cache transfer and writeback to memory
+      if(!ccif.dwait) begin
+        next_state <= IDLE;
+      end else begin
+        next_state <= WB0;
+      end
+    end
+    WB1: begin
+       //do cache to cache transfer and writeback to memory
+      if(!ccif.dwait) begin
+        next_state <= IDLE;
+      end else begin
+        next_state <= WB1;
+      end
+    end
+  endcase
+end
+
+always_comb begin : OUTPUT
+ ccif.ccsnoopaddr[0] = ccif.ccsnoopaddr[0];
+ ccif.ccsnoopaddr[1] = ccif.ccsnoopaddr[1];
+ ccif.ccwait = '0;
+ ccif.ccinv = '0;
+ ccif.ramstore = '0;
+ ccif.ramaddr = ccif.iaddr[0]; //prioritze Core 0, icache
+ ccif.iload[0] = ccif.iload[0];
+ ccif.iload[1] = ccif.iload[1];
+ ccif.dload = '0;
+ ccif.ramWEN = '0;
+ ccif.ramREN = '0; 
+ ccif.iwait = 2'b11; //both wait
+ ccif.dwait = 2'b11; //both wait
+
+ casez(state) 
+    IDLE: begin
+      ccif.ccsnoopaddr[0] <= '0;
+      ccif.ccsnoopaddr[1] <= '0;
+
+      if(ccif.iREN[0]) begin
+         //serve instruction from CORE 0
+         ccif.ramaddr = ccif.iaddr[0];  
+         ccif.iload[0] = ccif.ramload; 
+         ccif.ramWEN = 0;
+         ccif.ramREN = 1;
+         ccif.iwait[0] = (ccif.ramstate == ACCESS)? 0:1;
+         ccif.iwait[1] = 1;
+      end else if(ccif.iREN[1]) begin
+         //serve instruction from CORE 1
+         ccif.ramaddr = ccif.iaddr[1];
+         ccif.iload[1] = ccif.ramload;
+         ccif.ramWEN = 0;
+         ccif.ramREN = 1;
+         ccif.iwait[0] = 1;
+         ccif.iwait[1] = (ccif.ramstate == ACCESS)? 0:1;
+      end
+    end
+    ARBITRATE: begin
+      //both cores wait
+      ccif.iwait = 3;
+    end
+    SNOOP0: begin
+      ccif.ccwait[1] = 1; //tell core 1 to wait
+      ccif.ccsnoopaddr[1] = ccif.daddr[0]; 
+      
+      if(buxRdX[0]) begin
+        //invalidate everyone else on busrdx
+        ccif.ccinv[1] = 1;
+      end else begin
+        ccif.ccinv[1] = 0; 
+      end
+    end
+    SNOOP1: begin
+      //tell the core being snooped on, to wait
+      //send snoop tag
+      //do invalidation
+      ccif.ccwait[0] = 1; //tell core 0 to wait
+      ccif.ccsnoopaddr[0] = ccif.daddr[1]; 
+      
+      if(buxRdX[1]) begin
+        //invalidate everyone else on busrdx
+        ccif.ccinv[0] = 1;
+      end else begin
+        ccif.ccinv[0] = 0; 
+      end
+    end
+    WASTE0: begin
+      //dont do anything, just wait
+    end
+    WASTE1: begin
+      //dont do anything, just wait
+    end
+    WB0: begin
+      //do C2C
+      //tell other cache to wait, based on RAM state
+      ccif.dload[0] = ccif.dstore[1];
+      ccif.ramstore = ccif.dstore[1]; //store the content of the OTHER cache
+      ccif.ramaddr = ccif.daddr[1]; //store the address of the OTHER cache
+    end
+    WB1: begin
+      //do C2C
+      //tell other cache to wait, based on RAM state
+      ccif.dload[1] = ccif.dstore[0];
+      ccif.ramstore = ccif.dstore[0]; //store the content of the OTHER cache
+      ccif.ramaddr = ccif.daddr[0]; //store the address of the OTHER cache
+    end
+ endcase
+end
+
+always_ff @ (posedge CLK, negedge nRST)begin
+  if(!nRST) begin
+    state <= IDLE;
+  end else begin
+    state <= next_state;
+  end
+end
+
+endmodule
 
 //Load cache into ram
-assign ccif.iload = ccif.ramload;
+/*assign ccif.iload = ccif.ramload;
 assign ccif.dload = ccif.ramload;
 assign ccif.ramstore = ccif.dstore;
 
@@ -101,4 +274,4 @@ always_comb begin : priority_control_mux
       ccif.ramaddr = ccif.iaddr;
     end
 end
-endmodule
+endmodule*/
