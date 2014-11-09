@@ -64,7 +64,7 @@ module datapath (
   //////////////////////////////// HZ + FW /////////////////////////
 
 
-   // assign hzif.ihit = dpif.ihit;
+   assign hzif.ihit = dpif.ihit;
    assign hzif.dhit = dpif.dhit;
    assign hzif.halt = idex.halt_out;
    assign hzif.branch_taken = pcif.branch_flag;
@@ -115,7 +115,7 @@ module datapath (
    assign pcif.imm16 = idex.immediate_out;
    assign pcif.immediate26 = idex.immediate26_out;
 
-   assign pcif.pc_en = ((!(cuif.halt | dpif.halt) && dpif.ihit) || hzif.branch_taken || hzif.jump ) && !hzif.stall_ifid;
+   assign pcif.pc_en = ((!(cuif.halt | dpif.halt) && dpif.ihit) || hzif.branch_taken  || hzif.jump  ) && !hzif.stall_ifid ;
 
    always_comb begin : Branch_flag
       casez(idex.beq_out)
@@ -156,7 +156,7 @@ module datapath (
    assign aluif.shamt = idex.shamt_out; 
 
    assign dpif.dmemaddr = xmem.alu_output_out;
-   assign dpif.imemREN = !dpif.halt;
+   assign dpif.imemREN = !dpif.halt ;
    assign dpif.dmemREN = xmem.dREN_out;
    assign dpif.dmemWEN = xmem.M_MemWrite_out;
 

@@ -1,5 +1,5 @@
 #--------------------------------------
-# Test with a duck fibs sequence
+# Test with a fibonacci sequence
 #--------------------------------------
   org 0x0000
 
@@ -7,14 +7,15 @@
   ori   $1, $1, 1
   ori   $8, $8, 4
   ori   $6, $6, 0x0F00
-  ori   $15, $zero, 5   
+  lw    $15, 0($6)
 
 loop:
+  nop
   lw    $3, 0 ($2)
-  lw    $4, 4 ($2)                     #$rt,  imm($rs)
-  addu  $5, $3, $4  #addu  $2, $2, $8  #$rd, $rs $rt
-  sw    $5, 8 ($2)
+  lw    $4, 4 ($2)
   addu  $5, $3, $4
+  sw    $5, 8 ($2)
+  addu  $2, $2, $8
   subu  $15, $15, $1
   bne   $15, $zero, loop
 end:
@@ -30,4 +31,4 @@ start:
 # comment to use mmio
 
   org 0x0F00
-  cfw 22
+  cfw 20

@@ -12,13 +12,13 @@ module hazard_unit(
 // stall
   // always_comb begin
     // hzif.stall_ifid = hzif.halt;
-  assign hzif.stall_ifid = !((!hzif.halt || hzif.branch_taken || hzif.jump) && !hzif.stall_idex);
+    assign hzif.stall_ifid = !((!hzif.halt || hzif.branch_taken || hzif.jump) && !hzif.stall_idex);
      //hzif.stall_idex= ~(hzif.EMen & ~hzif.loading); //if there is a reg value in MEM that you need in EX, stall F,D stages while it loads.
-    assign hzif.stall_idex = !(!hzif.stall_xmem && !hzif.load);
+    assign hzif.stall_idex = !(!hzif.stall_xmem && !hzif.load) ;
     // hzif.stall_idex = (hzif.dmemREN || hzif.dmemWEN ? !hzif.dhit : 0);
      //hzif.stall_xmem = (hzif.dmemREN || hzif.dmemWEN ? !hzif.dhit : 0); //wait for memory operations
-    assign hzif.stall_xmem = (!hzif.dhit && (hzif.dmemWEN || hzif.dmemREN)); // wait for cache miss
-    assign hzif.stall_wb = hzif.stall_xmem;  // don't stall
+    assign hzif.stall_xmem = (!hzif.dhit && (hzif.dmemWEN || hzif.dmemREN)) ; // wait for cache miss
+    assign hzif.stall_wb = hzif.stall_xmem ;  // don't stall
   // end  // end of always
 
 
@@ -26,7 +26,7 @@ module hazard_unit(
   always_comb begin
      hzif.flush_xmem = 0;
      hzif.flush_wb = 0;
-//     hzif.pc_en = (hzif.dmemREN || hzif.dmemWEN ? hzif.dhit : 1);
+    // hzif.pc_en = (hzif.dmemREN || hzif.dmemWEN ? hzif.dhit : 1);
      if(!hzif.halt && (hzif.branch_taken == 1)) begin
         hzif.flush_ifid = 1;
         hzif.flush_idex = 1;

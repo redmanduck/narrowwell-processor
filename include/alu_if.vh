@@ -11,8 +11,7 @@ interface alu_if;
    logic   flag_n, flag_v, flag_z;
    logic [SHAM_W-1:0] shamt;
    
-   // regular module ports
-   modport alum
+   modport aluif
      (
       input  op1, op2, opcode, shamt,
       output res, flag_n, flag_v, flag_z
@@ -20,4 +19,4 @@ interface alu_if;
    	          
 endinterface
 
-`endif //ALU_VH
+`endif 

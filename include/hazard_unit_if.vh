@@ -9,6 +9,7 @@ interface hazard_unit_if;
    logic pc_en;
    logic jump;
    logic dhit;
+   logic ihit;
    logic mwb_rd;
    logic idex_rs;
    logic halt;
@@ -17,7 +18,7 @@ interface hazard_unit_if;
    modport hzu(
      output stall_ifid, stall_xmem, stall_idex, stall_wb, flush_ifid, flush_xmem,
 flush_idex, flush_wb, pc_en,
-     input halt,dhit,mwb_rd, idex_rs, jump, branch_taken, dmemREN, dmemWEN, load
+     input halt,dhit,mwb_rd, idex_rs, jump, branch_taken, dmemREN, dmemWEN, load, ihit
    );
 endinterface
 `endif

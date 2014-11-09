@@ -1,65 +1,79 @@
-
+//source code for alu
+//Hao ALU
 `include "alu_if.vh"
 `include "cpu_types_pkg.vh"
 
-import cpu_types_pkg::*;
+module alu(alu_if.aluif a_if);
+  import cpu_types_pkg::*;
 
-module alu
-  (
-   alu_if.alum aluif
-   );
+  always_comb
+  begin
+    //default case
+    a_if.res = 32'b0;
+    a_if.flag_v = 0;
 
-   logic carry_bit;   
-   
-   always_comb begin
-      casez(aluif.opcode)
-    ALU_ADD: begin
-       {aluif.flag_v, aluif.res} = aluif.op1 + aluif.op2;
+    casez (a_if.opcode)
+    ALU_SLL: begin // logical shift left
+      a_if.res = a_if.op1 << a_if.shamt;
+      a_if.flag_v = 0;
     end
-    ALU_SUB: begin
-       {aluif.flag_v, aluif.res} = aluif.op1 - aluif.op2;
+    ALU_SRL: begin // logical shift right
+      a_if.res = a_if.op1 >> a_if.shamt;
+      a_if.flag_v = 0;
     end
-    ALU_AND: begin
-       aluif.res = aluif.op1 & aluif.op2;
-       aluif.flag_v = 0;
+    ALU_AND: begin // and
+      a_if.res = a_if.op1 & a_if.op2;
+      a_if.flag_v = 0;
     end
-    ALU_OR: begin
-       aluif.res = aluif.op1 | aluif.op2;
-       aluif.flag_v = 0;
+    ALU_OR: begin //or
+      a_if.res = a_if.op1 | a_if.op2;
+      a_if.flag_v = 0;
     end
-    ALU_XOR: begin
-       aluif.res = aluif.op1 ^ aluif.op2;
-       aluif.flag_v = 0;
+    ALU_XOR: begin //xor
+      a_if.res = a_if.op1 ^ a_if.op2;
+      a_if.flag_v = 0;
     end
-    ALU_NOR: begin
-       aluif.res = ~(aluif.op1 | aluif.op2);
-       aluif.flag_v = 0;
+    ALU_NOR: begin //nor
+      a_if.res = ~(a_if.op1 | a_if.op2);
+      a_if.flag_v = 0;
     end
-    ALU_SLT: begin
-       aluif.res = $signed(aluif.op1) < $signed(aluif.op2) ? 
-               32'b01 : 32'b0;
-       aluif.flag_v = 0;
+    ALU_ADD: begin // signed add
+      a_if.res = $signed(a_if.op1) + $signed(a_if.op2);
+
+      if ((a_if.op1[31] == 1) && (a_if.op2[31]==1)) begin
+        if (a_if.res[31] == 1)
+          a_if.flag_v = 0;
+        else if (a_if.res[31] == 0)
+          a_if.flag_v = 1;
+      end
+
+      else if ((a_if.op1[31] == 0) && (a_if.op2[31]==0)) begin
+        if (a_if.res[31] == 0)
+          a_if.flag_v = 0;
+        else if (a_if.res[31] == 1)
+          a_if.flag_v = 1;
+      end
+
+      else if (a_if.op1[31] & a_if.op2[31])
+        a_if.flag_v = 0;
     end
-    ALU_SLTU: begin
-       aluif.res = $unsigned(aluif.op1) < $unsigned(aluif.op2) ?
-               32'b01 : 32'b0;
-       aluif.flag_v = 0;
+
+    ALU_SUB: begin //signed subtract
+      a_if.res = $signed(a_if.op1) - $signed(a_if.op2);
+      a_if.flag_v = 0;
     end
-    ALU_SLL: begin
-       aluif.res = aluif.op1 << aluif.shamt;
-       aluif.flag_v = 0;
+    ALU_SLT: begin //set less than signed
+      a_if.res = $signed(a_if.op1) < $signed(a_if.op2) ? 1:0;
+      a_if.flag_v = 0;
     end
-    ALU_SRL: begin
-       aluif.res = aluif.op1 >> aluif.shamt;
-       aluif.flag_v = 0;
+    ALU_SLTU: begin //set less than unsigned
+      a_if.res = a_if.op1 < a_if.op2 ? 1:0;
+      a_if.flag_v = 0;
     end
-    default: begin
-       aluif.res = 32'b0;
-       aluif.flag_v = 0;
-    end
-      endcase
-      
-      aluif.flag_z = aluif.res ? 0 : 1; //Zero flag
-      aluif.flag_n = aluif.res[$size(aluif.res) - 1] ? 1 : 0; //Neg flag
-   end
+    endcase
+  end //end always_comb
+
+  assign a_if.flag_n = a_if.res[31];
+  assign a_if.flag_z = a_if.res == 0 ? 1:0;
+
 endmodule

@@ -58,7 +58,7 @@ module dcache (
 
   assign hit0 = (rq_tag == cway[0].dtable[rq_index].tag) && (cway[0].dtable[rq_index].valid) && (dpif.dmemREN || dpif.dmemWEN);
   assign hit1 = (rq_tag == cway[1].dtable[rq_index].tag) && (cway[1].dtable[rq_index].valid) && (dpif.dmemREN || dpif.dmemWEN);
-  assign hit_out = hit0 | hit1;
+  assign hit_out = hit0 || hit1;
 
   assign dpif.dhit = hit_out;
 
@@ -325,7 +325,7 @@ module dcache (
 
                 if(dpif.dmemWEN == 1'b1) begin
 
-                    next_lru = !LRU[rq_index]; //?
+                    //next_lru = !LRU[rq_index]; //?
 
                     $display("IDLE WRITING CACHE: LRU = %d, IDX = %d, data = %h", cur_lru, rq_index, dpif.dmemstore);
                     FLUSH_INDEX_INCREM_EN = 0;
