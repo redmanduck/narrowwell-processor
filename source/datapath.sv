@@ -50,21 +50,21 @@ module datapath (
   assign rfif.rsel1 = cuif.rs;
   assign rfif.rsel2 = cuif.rt;
   assign rfif.wsel  = mwb.reg_instr_out;
-  assign rfif.WEN   = mwb.WB_RegWrite_out;  //mwb.dREN_out;
+  assign rfif.WEN   = mwb.WB_RegWrite_out;  //mwb.dREN_out; 
 
 
    always_ff @ (posedge CLK, negedge nRST) begin
       if (!nRST) begin
           dpif.halt = 0;
       end else if (mwb.halt_out) begin
-          dpif.halt = 1;
+          dpif.halt = 1;  
       end
    end
 
   //////////////////////////////// HZ + FW /////////////////////////
 
 
-   // assign hzif.ihit = dpif.ihit;
+   assign hzif.ihit = dpif.ihit;
    assign hzif.dhit = dpif.dhit;
    assign hzif.halt = idex.halt_out;
    assign hzif.branch_taken = pcif.branch_flag;
@@ -80,7 +80,7 @@ module datapath (
    assign fwif.mem_rd = wsel_tmp; //*(*)
    assign fwif.wb_rd  = mwb.reg_instr_out; //=wsel
    assign fwif.memRegWr = xmem.WB_RegWrite_out;
-   assign fwif.wbRegWr  = mwb.WB_RegWrite_out;
+   assign fwif.wbRegWr  = mwb.WB_RegWrite_out; 
    assign fwif.memWr = xmem.M_MemWrite_out;
 
   //////////////////////////////// PIPELINE LATCHES /////////////////////////
@@ -101,8 +101,8 @@ module datapath (
   always_comb begin : IFID_INSTR
       if (pcif.pc_en) begin
         ifid.instruction_in = dpif.imemload;
-      end else begin
-        ifid.instruction_in = '0;
+      end else begin  
+        ifid.instruction_in = '0; 
       end
   end
 
@@ -115,11 +115,11 @@ module datapath (
    assign pcif.imm16 = idex.immediate_out;
    assign pcif.immediate26 = idex.immediate26_out;
 
-   assign pcif.pc_en = ((!(cuif.halt | dpif.halt) && dpif.ihit) || hzif.branch_taken || hzif.jump ) && !hzif.stall_ifid;
+   assign pcif.pc_en = ((!(cuif.halt | dpif.halt) && dpif.ihit) || hzif.branch_taken  || hzif.jump  ) && !hzif.stall_ifid ;
 
    always_comb begin : Branch_flag
       casez(idex.beq_out)
-        1: pcif.branch_flag = (aluif.op1 != aluif.op2) ? 1 : 0;
+        1: pcif.branch_flag = (aluif.op1 != aluif.op2) ? 1 : 0; 
         2: pcif.branch_flag = (aluif.op1 == aluif.op2) ? 1 : 0;
         default: pcif.branch_flag = 0;
       endcase
@@ -135,7 +135,7 @@ module datapath (
   // assign idex.rdat2_in = rfif.rdat2;
 
   // always_comb begin : Extender
-  //   casez(cuif.ExtOp)
+  //   casez(cuif.ExtOp) 
   //     1: idex.immediate_in = {{16{cuif.immediate[15]}}, cuif.immediate};
   //     default: idex.immediate_in = {16'b0, cuif.immediate};
   //   endcase
@@ -153,10 +153,10 @@ module datapath (
    alu ALU(aluif);
 
    assign aluif.opcode = idex.EX_ALUOp_out;
-   assign aluif.shamt = idex.shamt_out;
+   assign aluif.shamt = idex.shamt_out; 
 
    assign dpif.dmemaddr = xmem.alu_output_out;
-   assign dpif.imemREN = !dpif.halt;
+   assign dpif.imemREN = !dpif.halt ;
    assign dpif.dmemREN = xmem.dREN_out;
    assign dpif.dmemWEN = xmem.M_MemWrite_out;
 
@@ -165,7 +165,7 @@ module datapath (
 
    always_comb begin : Forwarding_M
       casez (fwif.forwardData)
-        0: dpif.dmemstore = xmem.dmemstore_out; //TODO: add this
+        0: dpif.dmemstore = xmem.dmemstore_out; //TODO: add this 
         1: dpif.dmemstore = rfif.wdat;
         default: dpif.dmemstore = xmem.dmemstore_out;
       endcase
@@ -184,22 +184,22 @@ module datapath (
 
   ////////////////////////////// ALU ////////////////////////////////////////
 
-   logic load_sync;
+   logic load_sync;   
    word_t op1_sync, op2_sync;
-   word_t op1_mux, op2_mux;
+   word_t op1_mux, op2_mux;   
 
    // op saver (in case of flush (on LW dependency))
 
-   //SYNCHRONIZER
+   //SYNCHRONIZER 
    always_ff @ (posedge CLK, negedge nRST) begin
       if (!nRST) begin
          op1_sync <= '0;
          op2_sync <= '0;
-         load_sync <= '0;
+         load_sync <= '0;  
       end else begin
          op1_sync <= aluif.op1;
          op2_sync <= aluif.op2;
-         load_sync <= hzif.load;
+         load_sync <= hzif.load;  
       end
    end
 
@@ -207,7 +207,7 @@ module datapath (
    assign aluif.op1 = (load_sync && fwif.forwardB == 2) ? op1_sync : op1_mux;
    //if op1 is fwded on LW, latch op2 and flush rest.
    assign aluif.op2 = (load_sync && fwif.forwardA == 2) ? op2_sync : op2_mux;
-
+      
    always_comb begin : Forward_ALU_A
       casez (fwif.forwardA)
         1: op1_mux = xmem.alu_output_out;
@@ -215,7 +215,7 @@ module datapath (
         default: op1_mux = idex.rdat1_out;
       endcase
    end
-
+   
    always_comb begin : Forward_ALU_B1
       casez (fwif.forwardB)
           1: op2_tmp = xmem.alu_output_out;
@@ -229,7 +229,7 @@ module datapath (
           0: op2_mux = op2_tmp;
           1: op2_mux = idex.immediate_out;
           2: op2_mux = {idex.immediate_out, 16'b0}; //for LUI specifically
-          default: op2_mux = idex.rdat2_out;
+          default: op2_mux = idex.rdat2_out; 
       endcase
    end
 
@@ -285,9 +285,9 @@ module datapath (
 
    always_comb begin : reg_instr_out
       casez (xmem.EX_RegDst_out)
-        0: wsel_tmp = xmem.rd_out;
+        0: wsel_tmp = xmem.rd_out; 
         1: wsel_tmp = xmem.rt_out;
-        2: wsel_tmp = 31;
+        2: wsel_tmp = 31; 
         default: wsel_tmp = xmem.rd_out;
       endcase
    end
