@@ -5,13 +5,13 @@
 
 module alu(alu_if.aluif a_if);
   import cpu_types_pkg::*;
-
-  always_comb
-  begin
+  
+  always_comb 
+  begin : op_selector
     //default case
     a_if.res = 32'b0;
     a_if.flag_v = 0;
-
+	
     casez (a_if.opcode)
     ALU_SLL: begin // logical shift left
       a_if.res = a_if.op1 << a_if.shamt;

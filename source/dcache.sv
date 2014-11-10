@@ -13,6 +13,9 @@ module dcache (
   parameter way_count = 2;
   parameter CPUID = 0;
 
+  
+  
+  
   typedef struct packed{
     logic [25:0] tag;
     word_t [1:0] block;

@@ -15,7 +15,6 @@ import cpu_types_pkg::*;
 parameter CPUS = 2;
 parameter CPUID = 0;
 
-
 typedef enum {IDLE, ARBITRATE, SNOOP0, SNOOP1, WASTE0, WASTE1, WB0, WB1, FETCH0, FETCH1} u_state;
 
 u_state next_state, state;
@@ -158,7 +157,7 @@ always_comb begin : OUTPUT
       ccif.ccwait[1] = 1; //tell core 1 to wait
       ccif.ccsnoopaddr[1] = ccif.daddr[0]; 
       
-      if(buxRdX[0]) begin
+      if(busRdX[0]) begin
         //invalidate everyone else on busrdx
         ccif.ccinv[1] = 1;
       end else begin
@@ -172,7 +171,7 @@ always_comb begin : OUTPUT
       ccif.ccwait[0] = 1; //tell core 0 to wait
       ccif.ccsnoopaddr[0] = ccif.daddr[1]; 
       
-      if(buxRdX[1]) begin
+      if(busRdX[1]) begin
         //invalidate everyone else on busrdx
         ccif.ccinv[0] = 1;
       end else begin

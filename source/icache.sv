@@ -23,7 +23,7 @@ module icache (
 
 
   CacheTable [total_set - 1:0] dtable;
-
+  
   typedef enum logic [1:0] {idle, fetch} StateType;
 
   StateType state, next_state;
@@ -44,7 +44,6 @@ module icache (
   assign dpif.imemload = dtable[rq_index].data;
   assign ccif.iREN[CPUID] = !dpif.ihit && dpif.imemREN;
   assign ccif.iaddr[CPUID] = dpif.imemaddr;
-
 
   // always_ff @ (posedge CLK, negedge nRST) begin : cache_fsm
   //     if(!nRST) begin
@@ -117,7 +116,7 @@ module icache (
         x_valid <= '0;
         x_data <= '0;
         x_index <= '0;
-    end else if (dpif.imemREN && (!dcif.ihit) && (!ccif.iwait[CPUID])) begin
+    end else if (dpif.imemREN && (!dpif.ihit) && (!ccif.iwait[CPUID])) begin
         //state <= next_state;
         CACHE_WEN <= 1;
         x_tag <= rq_tag;
