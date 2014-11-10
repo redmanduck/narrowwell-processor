@@ -26,10 +26,10 @@ module caches (
   word_t instr;
 
   // icache
-  icache  ICACHE(CLK, nRST, dcif, ccif);
+  icache #(16,CPUID) ICACHE(CLK, nRST, dcif, ccif);
   // dcache
-  dcache  DCACHE(CLK, nRST, dcif, ccif);
-  
+  dcache #(8,2,CPUID) DCACHE(CLK, nRST, dcif, ccif);
+
 
 /*  // // single cycle instr saver (for memory ops)
    always_ff @(posedge CLK)
