@@ -117,7 +117,7 @@ module icache (
         x_valid <= '0;
         x_data <= '0;
         x_index <= '0;
-    end else if (dpif.imemREN && (!dcif.ihit) && (!ccif.iwait[CPUID])) begin
+    end else if (dpif.imemREN && (!dpif.ihit) && (!ccif.iwait[CPUID])) begin
         //state <= next_state;
         CACHE_WEN <= 1;
         x_tag <= rq_tag;
