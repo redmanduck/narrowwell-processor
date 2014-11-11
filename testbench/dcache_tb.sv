@@ -26,7 +26,7 @@ int unsigned cycles;
    //Comment out this portion to test dcache in isolation
    cpu_ram_if ramif();
    ram #(.LAT(1)) CPURAM (RAMCLK, nRST, ramif);
-   memory_control MCTL(CLK, nRST, ccif.cc);
+   // memory_control MCTL(CLK, nRST, ccif.cc);
    //connections
    assign ccif.ramstate = ramif.ramstate;
    assign ccif.ramload = ramif.ramload;
@@ -54,6 +54,8 @@ int unsigned cycles;
       dcif.dmemWEN = 0; dcif.dmemREN = 0;
       dcif.dmemaddr = '0;
       dcif.dmemstore = '0;
+
+      ccif.dwait = '0;
       //initial nRequesting
       #(PERIOD*1.5) nRST = 1;
       @(posedge CLK);
