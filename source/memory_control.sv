@@ -117,8 +117,8 @@ always_comb begin : OUTPUT
  ccif.ccwait = '0;
  ccif.ccinv = '0;
  ccif.ramstore = '0;
- ccif.ramaddr = ccif.iaddr[0]; //prioritze Core 0, icache
- ccif.iload[0] = ccif.iload[0];
+ ccif.ramaddr = ccif.iaddr[0]; //prioritize Core 0, icache
+ ccif.iload[0] = ccif.iload[0]; 
  ccif.iload[1] = ccif.iload[1];
  ccif.dload = '0;
  ccif.ramWEN = '0;
@@ -130,7 +130,8 @@ always_comb begin : OUTPUT
     IDLE: begin
       ccif.ccsnoopaddr[0] <= '0;
       ccif.ccsnoopaddr[1] <= '0;
-
+		
+      //%%%%%%%% non-coherence stuff, just arbitrate normally %%%%%%%%%%%
       if(ccif.iREN[0]) begin
          //serve instruction from CORE 0
          ccif.ramaddr = ccif.iaddr[0];  
@@ -148,26 +149,36 @@ always_comb begin : OUTPUT
          ccif.iwait[0] = 1;
          ccif.iwait[1] = (ccif.ramstate == ACCESS)? 0:1;
       end
+      //%%%%%%%%%%% end of non-coherence %%%%%%%%%%%%%%%
+      
+      
     end
     ARBITRATE: begin
       //both cores wait
       ccif.iwait = 3;
     end
     SNOOP0: begin
-      ccif.ccwait[1] = 1; //tell core 1 to wait
-      ccif.ccsnoopaddr[1] = ccif.daddr[0]; 
+      /*
+       * snoop0 means we snoop cache 1
+       */
+      ccif.ccwait[1] = 1; //tell core 1 to wait (dont transition out of idle)
+      ccif.ccsnoopaddr[1] = ccif.daddr[0];  //give core 1 the address core 0 want to snoop
       
+      //look for the response from the cache
       if(busRdX[0]) begin
-        //invalidate everyone else on busrdx
+        //invalidate everyone else on BusRdX
         ccif.ccinv[1] = 1;
       end else begin
+      	//dont invalidate 
         ccif.ccinv[1] = 0; 
       end
     end
     SNOOP1: begin
-      //tell the core being snooped on, to wait
-      //send snoop tag
-      //do invalidation
+      /* tell the core being snooped on, to wait
+      *   send snoop tag
+      *   do invalidation
+      */
+       
       ccif.ccwait[0] = 1; //tell core 0 to wait
       ccif.ccsnoopaddr[0] = ccif.daddr[1]; 
       
@@ -179,24 +190,24 @@ always_comb begin : OUTPUT
       end
     end
     WASTE0: begin
-      //dont do anything, just wait
+      //dont do anything, just wait (this came from snooping core 1)
     end
     WASTE1: begin
-      //dont do anything, just wait
+      //dont do anything, just wait (this came from snooping core 0)
     end
     WB0: begin
-      //do C2C
-      //tell other cache to wait, based on RAM state
-      ccif.dload[0] = ccif.dstore[1];
-      ccif.ramstore = ccif.dstore[1]; //store the content of the OTHER cache
-      ccif.ramaddr = ccif.daddr[1]; //store the address of the OTHER cache
+      //do C2C 
+      ccif.dload[0] = ccif.dstore[1]; //transfer to requester cache
+      //write back
+      ccif.ramstore = ccif.dstore[1]; //store the content of the SNOOPED cache
+      ccif.ramaddr = ccif.daddr[1]; //store the address of the SNOOPED cache
     end
     WB1: begin
       //do C2C
-      //tell other cache to wait, based on RAM state
-      ccif.dload[1] = ccif.dstore[0];
-      ccif.ramstore = ccif.dstore[0]; //store the content of the OTHER cache
-      ccif.ramaddr = ccif.daddr[0]; //store the address of the OTHER cache
+      ccif.dload[1] = ccif.dstore[0]; //transfer to requester cache
+      //write back
+      ccif.ramstore = ccif.dstore[0]; //store the content of the SNOOPED cache
+      ccif.ramaddr = ccif.daddr[0]; //store the address of the SNOOPED cache
     end
  endcase
 end

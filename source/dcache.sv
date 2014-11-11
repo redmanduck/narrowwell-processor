@@ -29,11 +29,11 @@ module dcache (
   CacheWay [1:0] cway;
 
   typedef enum logic [4:0] {
-    IDLE, fetch1, fetch2, fetch_done, 
-    wb1, wb2, reset, flush1, flush2, 
+    IDLE, FETCH1, FETCH2, FETCH_FINISHED, 
+    WB1, WB2, RESET, flush1, flush2, 
     flush3, flush4, ALL_FLUSHED, 
-    DONE_EVERYTHING, INVALIDATE, CACHE_WRITEBACK1, 
-    CACHE_WRITEBACK2
+    DONE_EVERYTHING, 
+    CC_INVALIDATE, CC_WB1, CC_WB2
   } StateType;
 
 
@@ -88,8 +88,6 @@ module dcache (
   assign flushset[1] = cway[1].dtable[flush_index];
 
   always_comb begin : next_state_logic_fsm
-     ccif.ccwrite[CPUID] = 0; //TODO: add this to other branches
-     ccif.cctrans[CPUID] = 0; //TODO: add this shit to the other branches
 
      next_state = IDLE;
      
@@ -97,11 +95,10 @@ module dcache (
      	/*
      	 * ###############  IDLE #################: 
      	 * 1. we can get snooped, and may need to transit to do cache writeback ( + c2c) (not normal writeback)
-     	 * 2. we can get snooped, and are demanded that we invalidate if there is a snoop hit
+     	 * 2. we can get snooped, and are demanded that we CC_INVALIDATE if there is a snoop hit
      	 * 3. other non-coherence operations 
      	 */
      	
-        //TODO: set CCWRITE somewhere
 
         if (dpif.halt) begin
             next_state = flush1;
@@ -109,12 +106,15 @@ module dcache (
         	if (ccif.ccinv[CPUID] == 1) begin
         		//M or S , transition to I
 
-        		next_state = INVALIDATE;
-        		ccif.cctrans[CPUID] = 1; //we will transition M -> I or S-> I
+        		next_state = CC_INVALIDATE;
         		
-        	end else if(cway[snoop_way].dtable[snoop_index].tag == snoop_tag) begin
-        		//there is a snoop hit but we are in modified , so we will writeback + send to the other cache
-        		next_state = CACHE_WRITEBACK; //writeback that snooped block
+        	end else if(cway[snoop_way].dtable[snoop_index].tag == snoop_tag && cway[snoop_way].dtable[snoop_index].dirty) begin
+        		//there is a snoop hit but we are in modified
+        		//so we will writeback + send to the other cache
+        		
+        		// this may transition from M->S -- probably
+        		
+        		next_state = CC_WB1; //writeback that snooped block
         	end
 
         end else if(hit_out) begin //&& dpif.dmemREN
@@ -123,28 +123,29 @@ module dcache (
         end else if(!(dpif.dmemREN || dpif.dmemWEN)) begin
             next_state = IDLE;
         end else if((!cway[cur_lru].dtable[rq_index].dirty || (!cway[0].dtable[rq_index].valid && !cway[1].dtable[rq_index].valid)) && !hit_out) begin
-            next_state = fetch1;
+            next_state = FETCH1;
         end else if(!hit_out && cway[cur_lru].dtable[rq_index].dirty && cway[cur_lru].dtable[rq_index].valid) begin
-            next_state = wb1;
+            next_state = WB1;
         end
 
-     end else if(state == INVALIDATE) begin
+     end else if(state == CC_INVALIDATE) begin
      	/**
-     	 * ######### INVALIDATE ##########
-     	 * we invalidate our block
+     	 * ######### CC_INVALIDATE ##########
+     	 * we CC_INVALIDATE our block
      	 */
         next_state = IDLE;
-     end else if(state == CACHE_WRITEBACK1) begin
+     end else if(state == CC_WB1) begin
      	/*
      	 * ######## CACHE_WRITEBACK #######
      	 * write back and do c2c for the given snoop blk offset 0
      	 */
      	if(!ccif.dwait[CPUID]) begin
-     		next_state = CACHE_WRITEBACK2;
+     		next_state = CC_WB2;
      	end else begin
-     		next_state = CACHE_WRITEBACK1;
+     		next_state = CC_WB1;
      	end
-     end else if(state == CACHE_WRITEBACK2) begin
+     	
+     end else if(state == CC_WB2) begin
      	/*
      	 * ######## CACHE_WRITEBACK #######
      	 * write back and do c2c for the given snoop blk offset 1
@@ -152,14 +153,13 @@ module dcache (
      	if(!ccif.dwait[CPUID]) begin
      		next_state = IDLE;
      	end else begin
-     		next_state = CACHE_WRITEBACK2;
+     		next_state = CC_WB2;
      	end
      end else if(state == flush1) begin
      	/**
      	 * ####### FLUSH ###########
      	 * This is a non coherence state where we flush the data off the tables
      	 */
-        ccif.ccwrite[CPUID] = 0;
         if(!ccif.dwait[CPUID]) begin
           next_state = flush2;
         end else begin
@@ -171,7 +171,6 @@ module dcache (
      	 * ####### FLUSH ###########
      	 * This is a non coherence state where we flush the data off the tables
      	 */
-     	ccif.ccwrite[CPUID] = 0;
         if(!ccif.dwait[CPUID]) begin
            next_state = flush3;
         end else begin
@@ -194,7 +193,6 @@ module dcache (
      	 * ####### FLUSH ###########
      	 * This is a non coherence state where we flush the data off the tables
      	 */
-     	ccif.ccwrite[CPUID] = 0;
         if(!ccif.dwait[CPUID]) begin
            if(flush_index == total_set -1) begin //done flushing if we flushed 8 rows already
               next_state = ALL_FLUSHED;
@@ -210,7 +208,6 @@ module dcache (
      	 * ####### ALL_FLUSHED ###########
      	 * Indicates that all flush are finished and appropriate signal are sent back
      	 */
-        ccif.ccwrite[CPUID] = 0;
         if(!ccif.dwait[CPUID]) begin //wait for RAM
           next_state = DONE_EVERYTHING;
         end else begin
@@ -221,70 +218,64 @@ module dcache (
      	 * ####### ALL DONE ###########
      	 * Dead state when everything is done
      	 */
-        ccif.ccwrite[CPUID] = 0;
         next_state = DONE_EVERYTHING;
 
-     end else if(state == fetch_done) begin
+     end else if(state == FETCH_FINISHED) begin
      	 /**
      	 * ####### FETCH DONE ###########
      	 * Indicate that a fetch (non coherence) is done
      	 */
         next_state = IDLE;
 
-     end else if(state == fetch1) begin
+     end else if(state == FETCH1) begin
      	 /**
      	 * ####### FETCH1 ###########
      	 * Fetch the first word
      	 */
-        ccif.ccwrite[CPUID] = 0;
         if(ccif.dwait[CPUID]) begin
-          next_state = fetch1;
+          next_state = FETCH1;
         end else begin
-          next_state = fetch2;
+          next_state = FETCH2;
         end
-     end else if(state == fetch2) begin
+     end else if(state == FETCH2) begin
      	 /**
      	 * ####### FETCH2 ###########
      	 * Fetch the second word
      	 */
-        ccif.ccwrite[CPUID] = 0;
         if(ccif.dwait[CPUID]) begin
-          next_state = fetch2;
+          next_state = FETCH2;
         end else begin
           next_state = IDLE;
         end
-     end else if(state == wb1) begin
+     end else if(state == WB1) begin
      	 /**
      	 * ####### WB1 ###########
      	 * Writeback the first word
      	 */
-        ccif.ccwrite[CPUID] = 1;
 
         if(ccif.dwait[CPUID]) begin
-            next_state = wb1;
+            next_state = WB1;
         end else begin
-            next_state = wb2;
+            next_state = WB2;
         end
 
-     end else if(state == wb2) begin
+     end else if(state == WB2) begin
      	 /**
      	 * ####### WB2 ###########
      	 * Writeback the second word
      	 */
-        ccif.ccwrite[CPUID] = 1;
         if(ccif.dwait[CPUID]) begin
-            next_state = wb2;
+            next_state = WB2;
         end else begin
-            next_state = fetch1;
+            next_state = FETCH1;
         end
 
-     end else if(state == reset) begin
+     end else if(state == RESET) begin
      	 /**
      	 * ####### RESET ###########
-     	 * Just dumbass reset state
+     	 * Just dumbass RESET state
      	 */
         next_state = IDLE;
-        ccif.ccwrite[CPUID] = 0;
      end
   end
 
@@ -321,9 +312,8 @@ module dcache (
 
  
   /*
-   * 
-   *  STATE Output logics
-   * 
+   *  State machine
+   *  Output logics
    */
  
   always_comb begin : output_logic_fsm
@@ -341,21 +331,26 @@ module dcache (
     hit_wait_count_next = hit_wait_count + 1;
     next_lru = LRU[rq_index];
     FLUSH_INDEX_INCREM_EN = 0;
-
+  
+    ccif.ccwrite[CPUID] = 0; 
+	ccif.cctrans[CPUID] = 0; //assert cctrans when there is an MSI upgrade
+    
     casez(state)
-      CACHE_WRITEBACK1: begin
+      CC_WB1: begin
       	/*
       	 * ##### CACHE writeback 1 #######
       	 */
-		//writing back part
+		//the block must've been in M state
+      	
       	ccif.dREN[CPUID] = 0;
 		ccif.dWEN[CPUID] = 1;
 		ccif.daddr[CPUID] = { snoop_tag, snoop_index, 3'b000};
 		ccif.dstore[CPUID] = cway[snoop_way].dtable[snoop_index].block[0:0]; 
-        ccif.ccwrite = 1;
-          
+        ccif.ccwrite[CPUID] = 1;
+        
+        
       end
-      CACHE_WRITEBACK2: begin
+      CC_WB2: begin
       	/*
       	 * ##### CACHE writeback 2 #######
      	 */	
@@ -364,27 +359,27 @@ module dcache (
       	ccif.dWEN[CPUID] = 1;
       	ccif.daddr[CPUID] = { snoop_tag, snoop_index, 3'b100};
       	ccif.dstore[CPUID] = cway[snoop_way].dtable[snoop_index].block[1:1]; 
-      	ccif.ccwrite = 1;      	// the current block to be no longer dirty
+      	ccif.ccwrite[CPUID] = 1;      	// the current block to be no longer dirty
       	
       	// the current block (both words) to be no longer dirty
 		which_word = 0; //dont matter , just be consistent
-        write_dirty = 0; //not dirty 
-        write_valid = 1; //and valid
+		
+        write_dirty = 0; 
+        write_valid = 1; // M -> S
+        
         write_tag = snoop_tag; 
         write_data = cway[snoop_way].dtable[snoop_index].block[0:0]; //we said word 0
         
         FLUSH_INDEX_INCREM_EN = 0;
         CACHE_WEN = 1;
-          
-        //c2c part -- give whatever word the thing requested
-		
-        //****** ASK ERIC: how to do cache to cache transfer???? TODO: how to do c2c
-        
+
+        ccif.cctrans[CPUID] = 0; //downgrade transition 
+		        
       end
       flush1: begin
       	   /*
-      	    * ##### FLUSH 1 #######
-      	    */
+      	   * ##### FLUSH 1 #######
+      	   */
            //This flushes WAY 1, LOWER WORD at whaterver index we are at
 
           which_word = 0;
@@ -500,15 +495,18 @@ module dcache (
           write_tag = 0;
           write_data = 0;      
       end
-      INVALIDATE: begin
+      CC_INVALIDATE: begin
       	  /*
-      	  * ##### (CC) INVALIDATE #######
+      	  * ##### (CC) CC_INVALIDATE #######
       	  */
       	  //set the valid bit false for the cache block being snooped
+      	
+      	  ccif.cctrans[CPUID] = 0;  //we dont need to tell other cache anything
+      	
           dpif.flushed = 0;
           CACHE_WEN = 1;
           which_word = snoop_offset;
-          write_dirty = 0;
+          write_dirty = 0; //go from M -> I or S-> I
           write_valid = 0;
           write_tag = snoop_tag;
           write_data = 'hFBFBFBFB;
@@ -531,10 +529,11 @@ module dcache (
                 end
 
                 if(dpif.dmemWEN == 1'b1) begin
-
+					//while sitting in cache
+                	//and there is a hit
+                	//and there is a write
                     next_lru = !LRU[rq_index]; //?
-
-                    $display("IDLE WRITING CACHE: LRU = %d, IDX = %d, data = %h", cur_lru, rq_index, dpif.dmemstore);
+                    
                     FLUSH_INDEX_INCREM_EN = 0;
                     CACHE_WEN = 1;
 
@@ -543,6 +542,17 @@ module dcache (
                     write_valid = 1;
                     write_tag = rq_tag;
                     write_data = dpif.dmemstore;
+                    
+                    //if upgrade from S -> M , cctrans
+                    if(cway[!hit0].dtable[rq_index].valid && !cway[!hit0].dtable[rq_index].dirty) begin
+                    	ccif.cctrans[CPUID] = 1; 
+                    end else if(!cway[!hit0].dtable[rq_index].valid) begin
+                    	//if upgrade from I -> M
+                    	ccif.cctrans[CPUID] = 1;
+                    end else begin
+                    	//all other cases
+                    	ccif.cctrans[CPUID] = 0; 
+                    end
                 end
 
             end else begin
@@ -553,7 +563,7 @@ module dcache (
                 write_valid = 0;
                 write_tag = 0;
                 write_data = 0;
-
+				ccif.cctrans[CPUID] = 0;
                 FLUSH_INDEX_INCREM_EN  = 0;
             end
 
@@ -562,7 +572,7 @@ module dcache (
             // end
 
       end
-      fetch1: begin
+      FETCH1: begin
       	/*
       	   * ############### FETCH 1 ###########
       	   * Fetch data from memory for word 0
@@ -575,11 +585,13 @@ module dcache (
           write_tag = rq_tag;
           write_valid = 0;
           write_data = ccif.dload[CPUID];
+          
+          ccif.cctrans[CPUID] = 0; 
 
           FLUSH_INDEX_INCREM_EN  = 0;
           ccif.daddr[CPUID] = {rq_tag, rq_index, 3'b000};
       end
-      fetch2: begin
+      FETCH2: begin
            /*
       	   * ############### FETCH 2 ###########
       	   * Fetch data from memory for word 1- because we missed or someshit
@@ -617,14 +629,22 @@ module dcache (
                 write_tag = rq_tag;
 
           end
+          
+          //send out cctrans because we are transitioning from I to S
+          //TODO: not sure about cur_lru used here??
+          if(!cway[cur_lru].dtable[rq_index].valid) begin 
+          	ccif.cctrans[CPUID] = 1; 
+          end else begin
+          	ccif.cctrans[CPUID] = 0;
+          end
 
       end
-      wb1: begin
+      WB1: begin
       	   /*
       	   * ############### WRITEBACK ###########
-      	   * On eviction or someshit, write the block back to vm
+      	   * On eviction or something like that
+      	   * write the block back to RAM 
       	   */
-          //writeback data in table to RAM
 
           CACHE_WEN = 0;
           which_word = 0;
@@ -640,13 +660,17 @@ module dcache (
           ccif.dREN[CPUID] = 0;
           ccif.dstore[CPUID] = cway[cur_lru].dtable[rq_index].block[0:0]; //cur_lru ---> (hit0 ? 1 : 0)
 
+          //TODO : double check with evillase
+          ccif.cctrans[CPUID] = 0; //this is a MSI downgrade 
+          
       end
-      wb2: begin
+      WB2: begin
       	 /*
       	   * ############### WRITEBACK ###########
-      	   * On eviction or someshit, write the block back to vm
+      	   * On eviction or some shit, write the block back to vm
       	   */
           //writeback data in table to RAM
+      	
           CACHE_WEN = 0;
 
           which_word = 0;
@@ -661,6 +685,9 @@ module dcache (
           ccif.dREN[CPUID] = 0;
           ccif.dstore[CPUID] = cway[cur_lru].dtable[rq_index].block[1:1]; //(hit0 ? 1 : 0)
 
+          //TODO : double check with evillase
+          ccif.cctrans[CPUID] = 0; //this is a MSI downgrade 
+          
       end
       default: begin
         $display("entered default");
@@ -677,6 +704,7 @@ module dcache (
         which_word = 0;
         write_data = 0;
         write_tag = 0;
+        ccif.cctrans[CPUID] = 0;
       end
     endcase
   end
