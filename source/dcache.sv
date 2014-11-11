@@ -13,7 +13,11 @@ module dcache (
   parameter way_count = 2;
   parameter CPUID = 0;
 
-
+  //IN --> ccsnoopaddr
+  //IN --> ccinv
+  //IN --> ccwait
+  //OUT --> cctrans
+  //OUT --> ccwrite
 
   typedef struct packed{
     logic [25:0] tag;
@@ -207,11 +211,13 @@ module dcache (
     // write_valid = 0;
     // write_tag = 0;
     // write_data = 0;
-    // dpif.flushed = 0;
+    dpif.flushed = 0;
     hitcount_next = hitcount;
     hit_wait_count_next = hit_wait_count + 1;
     next_lru = LRU[rq_index];
     FLUSH_INDEX_INCREM_EN = 0;
+
+    ccif.dstore[CPUID] = 0;
 
     casez(state)
       flush1: begin
@@ -250,7 +256,6 @@ module dcache (
 
           //$display("FLUSHING 2 : idx = %h, data = %h, dirty = %h, addr = %h", flush_index, flushset[0].block[1], flushset[0].dirty, { flushset[0].tag, flush_index, 1'b1 ,2'b00});
 
-          //TODO we need to write hit count to memory
       end
       flush3: begin
           //This flushes WAY 2, LOWER WORD at whaterver index we are at
@@ -307,16 +312,24 @@ module dcache (
 
       end
       done_everything: begin
+          ccif.dREN[CPUID] = 0;
+          ccif.dWEN[CPUID] = 0;
           dpif.flushed = 1;
           which_word = 0;
           write_dirty = 0;
           write_valid = 0;
           write_tag = 0;
-          write_data = 0;      end
+          write_data = 0;
+      end
       idle: begin
             ccif.dREN[CPUID] = 0;
             ccif.dWEN[CPUID] = 0;
             hit_wait_count_next = 0;
+            which_word = 0;
+            write_dirty = 0;
+            write_valid = 0;
+            write_tag = 0;
+            write_data = 0;
 
             if(hit_out) begin
                 next_lru = hit0;
