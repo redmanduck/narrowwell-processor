@@ -23,7 +23,6 @@ module program_counter (
    parameter PC_INIT = 0;
 
    assign pcif.imemaddr = PC;
-   /// diff , he did in datapath
   // assign pcif.branch_addr = PC + 4 + {14'b0, pcif.imm16,2'b0};
 
 
@@ -44,7 +43,7 @@ module program_counter (
 
    always_ff @ (posedge CLK, negedge nRST) begin
       if (!nRST) begin
-        PC <= '0;
+        PC <= PC_INIT;
       end else if(pcif.pc_en) begin
         PC <= PC_next;
       end

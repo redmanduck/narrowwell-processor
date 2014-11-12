@@ -590,6 +590,15 @@ module dcache (
 
           FLUSH_INDEX_INCREM_EN  = 0;
           ccif.daddr[CPUID] = {rq_tag, rq_index, 3'b000};
+          
+          //send out cctrans because we are transitioning from I to S
+          //TODO: not sure about cur_lru used here??
+          if(!cway[cur_lru].dtable[rq_index].valid) begin 
+          	ccif.cctrans[CPUID] = 1; 
+          end else begin
+          	ccif.cctrans[CPUID] = 0;
+          end
+
       end
       FETCH2: begin
            /*
@@ -629,14 +638,7 @@ module dcache (
                 write_tag = rq_tag;
 
           end
-          
-          //send out cctrans because we are transitioning from I to S
-          //TODO: not sure about cur_lru used here??
-          if(!cway[cur_lru].dtable[rq_index].valid) begin 
-          	ccif.cctrans[CPUID] = 1; 
-          end else begin
-          	ccif.cctrans[CPUID] = 0;
-          end
+
 
       end
       WB1: begin

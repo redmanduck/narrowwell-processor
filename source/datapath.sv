@@ -96,7 +96,8 @@ module datapath (
   assign mwb.WEN = !hzif.stall_wb;
 
   ///////////////////////////////  FETCH STAGE //////////////////////////////
-  program_counter PC_UNIT(CLK, nRST, pcif);
+  
+  program_counter #(PC_INIT) PC_UNIT(CLK, nRST, pcif);
 
   always_comb begin : IFID_INSTR
       if (pcif.pc_en) begin
@@ -106,7 +107,7 @@ module datapath (
       end
   end
 
-   assign ifid.pcn_in = pcif.imemaddr + 4; //pc+4
+   assign ifid.pcn_in = pcif.imemaddr + 4; //pc+4  (offset PC_INIT)
 
    assign dpif.imemaddr = pcif.imemaddr;
 

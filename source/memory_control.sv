@@ -37,9 +37,9 @@ always_comb begin : NEXT_STATE
     end
     ARBITRATE: begin 
       if(ccif.dWEN[0] || ccif.dREN[0]) begin
-        next_state <= SNOOP0;
+        next_state <= SNOOP0; //snoop cache 1
       end else if (ccif.dREN[1] || ccif.dWEN[1]) begin
-        next_state <= SNOOP1;
+        next_state <= SNOOP1; //snoop cache 0
       end else begin
         next_state <= IDLE;
       end
@@ -94,7 +94,7 @@ always_comb begin : NEXT_STATE
     end
     WB0: begin
       //do cache to cache transfer and writeback to memory
-      if(!ccif.dwait) begin
+      if(!ccif.dwait[0]) begin  //TODO: gotta be ccif.dwait[0/1]
         next_state <= IDLE;
       end else begin
         next_state <= WB0;
@@ -102,7 +102,7 @@ always_comb begin : NEXT_STATE
     end
     WB1: begin
        //do cache to cache transfer and writeback to memory
-      if(!ccif.dwait) begin
+      if(!ccif.dwait[1]) begin  //TODO: ASK ERIC [0] or [1]?
         next_state <= IDLE;
       end else begin
         next_state <= WB1;
@@ -131,8 +131,8 @@ always_comb begin : OUTPUT
       ccif.ccsnoopaddr[0] <= '0;
       ccif.ccsnoopaddr[1] <= '0;
 		
-      //%%%%%%%% non-coherence stuff, just arbitrate normally %%%%%%%%%%%
-      if(ccif.iREN[0]) begin
+      //%%%%%%%% non-coherence stuff, just choose normally %%%%%%%%%%%
+      if(ccif.iREN[0]) begin  //prioritize core 0
          //serve instruction from CORE 0
          ccif.ramaddr = ccif.iaddr[0];  
          ccif.iload[0] = ccif.ramload; 
@@ -151,7 +151,9 @@ always_comb begin : OUTPUT
       end
       //%%%%%%%%%%% end of non-coherence %%%%%%%%%%%%%%%
       
+      //TODO: add handle eviction (detect dWEN from either caches)
       
+            
     end
     ARBITRATE: begin
       //both cores wait
@@ -190,17 +192,21 @@ always_comb begin : OUTPUT
       end
     end
     WASTE0: begin
-      //dont do anything, just wait (this came from snooping core 1)
+      //don't do anything, just wait (this came from snooping core 1)
     end
     WASTE1: begin
-      //dont do anything, just wait (this came from snooping core 0)
+      //don't do anything, just wait (this came from snooping core 0)
     end
     WB0: begin
-      //do C2C 
+      //writeback 0 means we snooped cache 1 already
+      //do C2C -- if cache one has it 
       ccif.dload[0] = ccif.dstore[1]; //transfer to requester cache
       //write back
       ccif.ramstore = ccif.dstore[1]; //store the content of the SNOOPED cache
       ccif.ramaddr = ccif.daddr[1]; //store the address of the SNOOPED cache
+      
+      //tell the requester cache to stop waiting
+      ccif.dwait[0] = 0;            //TODO: ask evillase
     end
     WB1: begin
       //do C2C
@@ -208,6 +214,8 @@ always_comb begin : OUTPUT
       //write back
       ccif.ramstore = ccif.dstore[0]; //store the content of the SNOOPED cache
       ccif.ramaddr = ccif.daddr[0]; //store the address of the SNOOPED cache
+      
+      ccif.dwait[1] = 0;
     end
  endcase
 end
