@@ -15,7 +15,7 @@ import cpu_types_pkg::*;
 parameter CPUS = 2;
 parameter CPUID = 0;
 
-typedef enum {IDLE, ARBITRATE, SNOOP0, SNOOP1, WAIT0, WAIT1, WB0, WB1, FETCH0, FETCH1} u_state;
+typedef enum {IDLE, ARBITRATE, SNOOP0, SNOOP1, WAIT0, WAIT1, WB0, WB1, FETCH0, FETCH1, SNOOP_WAIT0_A, SNOOP_WAIT0_B, SNOOP_WAIT1_A, SNOOP_WAIT1_B} u_state;
 
 u_state next_state, state;
 
@@ -31,7 +31,7 @@ always_comb begin : NEXT_STATE
       if(ccif.cctrans[0] || ccif.cctrans[1]) begin
         //there is a coherency stuff going on
         next_state <= ARBITRATE;
-      end else begin
+      end else if(ccif.dWEN[0] || ccif.dWEN[1]) begin
         next_state <= IDLE;
       end
     end
@@ -45,39 +45,79 @@ always_comb begin : NEXT_STATE
       end
     end
     SNOOP0: begin
-      if(!ccif.dWEN[1]) begin
+      if(ccif.dWEN[1]) begin
         //if cache 0 WEN went low, its done, move on
         next_state <= WAIT0; 
       end else begin
         //wait 
-        next_state <= SNOOP0;
+      	next_state <= SNOOP_WAIT0_A;
       end
     end
+    SNOOP_WAIT0_A: begin
+    	/*
+    	 * Wait for dWEN , if we snoop and the other cache dont respond (with dWEN) we know to move on to fetch
+    	 */
+    	if(ccif.dWEN[1]) begin
+    		next_state <= WAIT0;
+    	end else begin
+    		next_state <= SNOOP_WAIT0_B; 
+    	end
+    end
+    SNOOP_WAIT0_B: begin
+    	/*
+    	 * second wait cycle after SNOOP_WAIT0_A
+    	 */
+    	if(ccif.dWEN[1]) begin
+    		next_state <= WAIT0;
+    	end else begin
+    		next_state <= FETCH0; 
+    	end
+    end
+    SNOOP_WAIT1_A: begin
+    	/*
+    	 * Wait for dWEN , if we snoop and the other cache dont respond (with dWEN) we know to move on to fetch
+    	 */
+    	if(ccif.dWEN[0]) begin
+    		next_state <= WAIT1;
+    	end else begin
+    		next_state <= FETCH1; 
+    	end
+    end
+    SNOOP_WAIT1_B: begin
+    	/*
+    	 * second wait cycle after SNOOP_WAIT0_B
+    	 */
+    	if(ccif.dWEN[0]) begin
+    		next_state <= WAIT1;
+    	end else begin
+    		next_state <= FETCH1; 
+    	end
+    end
     SNOOP1: begin
-      if(!ccif.dWEN[0]) begin
+      if(ccif.dWEN[0]) begin
         //if cache 0 WEN went low, its done, move on
         next_state <= WAIT1; 
       end else begin
         //wait 
-        next_state <= SNOOP1;
+        next_state <= SNOOP_WAIT1_A;
       end
     end
     WAIT0: begin
-      if(!ccif.dWEN[1]) begin
+      if(!ccif.dWEN[1] && !ccif.dwait) begin
         next_state <= WB0; //move forward when cache 0 is done
       end else begin
         next_state <= WAIT0; //wait
       end
     end
     WAIT1: begin
-      if(!ccif.dWEN[0]) begin
+      if(!ccif.dWEN[0] && !ccif.dwait) begin
         next_state <= WB1; //move forward when cache 0 is done
       end else begin
         next_state <= WAIT1; //wait
       end
     end
     FETCH0: begin
-      if(!ccif.dwait) begin
+      if(!ccif.dwait[0]) begin
         //Done fetch
         next_state <= IDLE;
       end else begin
@@ -85,7 +125,7 @@ always_comb begin : NEXT_STATE
       end
     end
     FETCH1: begin
-      if(!ccif.dwait) begin
+      if(!ccif.dwait[1]) begin
         //Done fetch
         next_state <= IDLE;
       end else begin
@@ -231,6 +271,14 @@ always_comb begin : OUTPUT
       ccif.ramREN = 1;
       ccif.ramstore = ccif.dstore[0];
       ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;
+    end
+    SNOOP_WAIT1_B: begin
+    end
+    SNOOP_WAIT1_A: begin
+    end
+    SNOOP_WAIT0_A: begin 
+    end
+    SNOOP_WAIT0_B: begin
     end
  endcase
 end

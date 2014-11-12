@@ -592,6 +592,7 @@ module dcache (
           ccif.daddr[CPUID] = {rq_tag, rq_index, 3'b000};
           
           //send out cctrans because we are transitioning from I to S
+          
           //TODO: not sure about cur_lru used here??
           if(!cway[cur_lru].dtable[rq_index].valid) begin 
           	ccif.cctrans[CPUID] = 1; 
@@ -623,6 +624,13 @@ module dcache (
             write_valid = 1;
           end else begin
             write_valid = 0;
+          end
+          
+          //TODO: not sure about cur_lru used here??
+          if(!cway[cur_lru].dtable[rq_index].valid) begin 
+          	ccif.cctrans[CPUID] = 1; 
+          end else begin
+          	ccif.cctrans[CPUID] = 0;
           end
 	
           //TODO: not sure why this is here? is there a case where we need this? isnt this redundant?
