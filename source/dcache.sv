@@ -49,6 +49,7 @@ module dcache (
   word_t hit_wait_count, hit_wait_count_next;
 
   logic FLUSH_INDEX_INCREM_EN;
+  logic CACHE_CLEAR;
   logic which_word, write_dirty, write_valid, CACHE_WEN;
   word_t write_data;
   logic [25:0] write_tag;
@@ -90,8 +91,8 @@ module dcache (
   always_comb begin : next_state_logic_fsm
 
      next_state = IDLE;
-     
-     if(state == IDLE) begin
+     ccif.flushing[CPUID] = 0;            
+     if(state == IDLE && !ccif.ccwait[CPUID]) begin
      	/*
      	 * ###############  IDLE #################: 
      	 * 1. we can get snooped, and may need to transit to do cache writeback ( + c2c) (not normal writeback)
@@ -99,9 +100,9 @@ module dcache (
      	 * 3. other non-coherence operations 
      	 */
      	
-
         if (dpif.halt) begin
             next_state = flush1;
+                  	  ccif.flushing[CPUID] = 1;            
         end else if(snoop_hit) begin
         	if (ccif.ccinv[CPUID] == 1) begin
         		//M or S , transition to I
@@ -162,8 +163,10 @@ module dcache (
      	 */
         if(!ccif.dwait[CPUID] || !flushset[0].dirty) begin
           next_state = flush2;
+          ccif.flushing[CPUID] = 1; 
         end else begin
            next_state = flush1;
+           ccif.flushing[CPUID] = 1; 
         end
 
      end else if(state == flush2) begin
@@ -173,8 +176,10 @@ module dcache (
      	 */
         if(!ccif.dwait[CPUID] || !flushset[0].dirty) begin
            next_state = flush3;
+           ccif.flushing[CPUID] = 1; 
         end else begin
            next_state = flush2;
+           ccif.flushing[CPUID] = 1; 
         end
      end else if(state == flush3) begin
      	/**
@@ -184,8 +189,10 @@ module dcache (
 
      	if(!ccif.dwait[CPUID] || !flushset[1].dirty) begin
           next_state = flush4;
+          ccif.flushing[CPUID] = 1; 
         end else begin
            next_state = flush3;
+           ccif.flushing[CPUID] = 1; 
         end
 
      end else if(state == flush4) begin
@@ -196,11 +203,14 @@ module dcache (
         if(!ccif.dwait[CPUID] || !flushset[1].dirty) begin
            if(flush_index == total_set -1) begin //done flushing if we flushed 8 rows already
               next_state = DONE_EVERYTHING; //took out hitocunt
+              ccif.flushing[CPUID] = 0; 
            end else begin
               next_state = flush1;
+              ccif.flushing[CPUID] = 1; 
            end
         end else begin
            next_state = flush4;
+           ccif.flushing[CPUID] = 1; 
         end
 
     end else if(state == ALL_FLUSHED) begin
@@ -232,20 +242,20 @@ module dcache (
      	 * ####### FETCH1 ###########
      	 * Fetch the first word
      	 */
-        if(ccif.dwait[CPUID]) begin
-          next_state = FETCH1;
-        end else begin
+        if(!ccif.dwait[CPUID]) begin
           next_state = FETCH2;
+        end else begin
+          next_state = FETCH1;
         end
      end else if(state == FETCH2) begin
      	 /**
      	 * ####### FETCH2 ###########
      	 * Fetch the second word
      	 */
-        if(ccif.dwait[CPUID]) begin
-          next_state = FETCH2;
-        end else begin
+        if(!ccif.dwait[CPUID]) begin
           next_state = IDLE;
+        end else begin
+          next_state = FETCH2;
         end
      end else if(state == WB1) begin
      	 /**
@@ -318,6 +328,7 @@ module dcache (
  
   always_comb begin : output_logic_fsm
     CACHE_WEN = 0;
+    CACHE_CLEAR = 0;
     // ccif.dREN = 0;
     // ccif.dWEN = 0;
 
@@ -381,7 +392,6 @@ module dcache (
       	   * ##### FLUSH 1 #######
       	   */
            //This flushes WAY 1, LOWER WORD at whaterver index we are at
-
           which_word = 0;
           write_dirty = 0;
           write_valid = 0;
@@ -403,7 +413,6 @@ module dcache (
       	    * ##### FLUSH 2 #######
       	    */
           //This flushes WAY 2, UPPER WORD at whaterver index we are at
-
           which_word = 0;
           write_dirty = 0;
           write_valid = 0;
@@ -425,7 +434,6 @@ module dcache (
       	   * ##### FLUSH3 #######
       	   */
           //This flushes WAY 2, LOWER WORD at whaterver index we are at
-
           which_word = 0;
           write_dirty = 0;
           write_valid = 0;
@@ -448,7 +456,6 @@ module dcache (
       	 * ##### FLUSH 4 #######
       	*/
       	//This flushes WAY 2, UPPER WORD at whaterver index we are at
-
           which_word = 0;
           write_dirty = 0;
           write_valid = 0;
@@ -476,7 +483,6 @@ module dcache (
           ccif.dstore[CPUID] = hitcount;
           ccif.daddr[CPUID] = 32'h3100; //thats where we write hit count to 
           CACHE_WEN = 0;
-
           which_word = 0;
           write_dirty = 0;
           write_valid = 0;
@@ -485,7 +491,7 @@ module dcache (
 
       end
       DONE_EVERYTHING: begin
-      	      	   /*
+      	  /*
       	   * ##### DONE EVERTHING #######
       	   */
           dpif.flushed = 1; //signal the processor that we are done 
@@ -493,6 +499,8 @@ module dcache (
           write_dirty = 0;
           write_valid = 0;
           write_tag = 0;
+          CACHE_CLEAR = 1;
+          CACHE_WEN = 0;
           write_data = 0;      
       end
       CC_INVALIDATE: begin
@@ -738,6 +746,8 @@ module dcache (
                 cway[cur_lru].dtable[rq_index].valid <= write_valid;
                 cway[cur_lru].dtable[rq_index].dirty <= write_dirty;
           end
+      end else if(CACHE_CLEAR) begin
+      		cway <= '0;
       end
   end
 
@@ -754,7 +764,7 @@ module dcache (
         state <= IDLE;
         hitcount <= 0;
         hit_wait_count <= 0;
-    end else if(!ccif.ccwait[CPUID]) begin //don't transition on ccwait - pause 
+    end else begin //don't transition on ccwait - pause 
         state <= next_state;
         hitcount <= hitcount_next;
         hit_wait_count <= hit_wait_count_next;

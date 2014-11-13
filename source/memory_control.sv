@@ -28,10 +28,13 @@ assign busRd[1] = ccif.cctrans[1] && !ccif.ccwrite[1];
 always_comb begin : NEXT_STATE
   casez(state) 
     IDLE: begin
-      if(ccif.cctrans[0] || ccif.cctrans[1]) begin
+      if(ccif.flushing[0] || ccif.flushing[1]) begin
+    	//if there is a flushing operation we just wait calmly in idle
+      	next_state <= IDLE;
+      end else if(ccif.cctrans[0] || ccif.cctrans[1]) begin
         //there is a coherency stuff going on
         next_state <= ARBITRATE;
-      end else if(ccif.dWEN[0] || ccif.dWEN[1]) begin
+      end else begin // if(ccif.dWEN[0] || ccif.dWEN[1])
         next_state <= IDLE;
       end
     end
@@ -103,14 +106,14 @@ always_comb begin : NEXT_STATE
       end
     end
     WAIT0: begin
-      if(!ccif.dWEN[1] && !ccif.dwait[1]) begin
+      if(!ccif.dwait[1] ) begin
         next_state <= WB0; //move forward when cache 0 is done
       end else begin
         next_state <= WAIT0; //wait
       end
     end
     WAIT1: begin
-      if(!ccif.dWEN[0] && !ccif.dwait[0]) begin
+      if(!ccif.dwait[0] ) begin
         next_state <= WB1; //move forward when cache 0 is done
       end else begin
         next_state <= WAIT1; //wait
@@ -172,7 +175,19 @@ always_comb begin : OUTPUT
       ccif.ccsnoopaddr[1] = '0;
 		
       //%%%%%%%% non-coherence stuff, just choose normally %%%%%%%%%%%
-      //TODO: ASK Adam Villasenor , 
+      //TODO: ASK Adam Villasenor --
+      /*
+       * prob: the memory controller is doing coherence stuff ,
+       *       suddenly the cache 1 goes into FLUSH
+       *       the memory controller tells the flush to wait
+       *       the flush waited
+       *       memory controller is waiting for dWEN
+       *       but since cache 1 is doing flush, its going to send out dWEN
+       *       the memory controller thought cache 1 is snooping
+       *       so it turned off dwait
+       *       the cache thought that that dwait was meant for the flush (not snoop)
+       *       so it moves on (fake flush)
+       */
       if(ccif.dWEN[0] && !busRd[0] && !busRdX[0]) begin
       	 //write from core 1
          ccif.ramaddr = ccif.daddr[0];  
@@ -212,6 +227,8 @@ always_comb begin : OUTPUT
             
     end
     ARBITRATE: begin
+      ccif.ccwait[0] = 1;
+      ccif.ccwait[1] = 1;
       //both cores wait
       ccif.iwait = 3;
     end
@@ -220,6 +237,8 @@ always_comb begin : OUTPUT
        * snoop0 means we snoop cache 1
        */
       ccif.ccwait[1] = 1; //tell core 1 to wait (dont transition out of idle)
+      ccif.ccwait[0] = 1; //Q: when we snoop should we tell both cores to wait???
+      
       ccif.ccsnoopaddr[1] = ccif.daddr[0];  //give core 1 the address core 0 want to snoop
       
       //look for the response from the cache
@@ -238,6 +257,7 @@ always_comb begin : OUTPUT
       */
        
       ccif.ccwait[0] = 1; //tell core 0 to wait
+      ccif.ccwait[1] = 1;
       ccif.ccsnoopaddr[0] = ccif.daddr[1]; 
       
       if(busRdX[1]) begin
@@ -248,6 +268,7 @@ always_comb begin : OUTPUT
       end
     end
     WAIT0: begin
+    	ccif.ccwait[1] = 1;    
          //don't do anything, just wait (this came after snooping core 1)
     	 //writeback 0 means we snooped cache 1 already
     	
@@ -260,10 +281,11 @@ always_comb begin : OUTPUT
 	      ccif.ramaddr = ccif.daddr[1]; //store the address of the SNOOPED cache
 	      ccif.ramWEN = 1;
 	      //tell the requester cache to stop waiting
-	      ccif.dwait[0] = 1;
+	      ccif.dwait[0] = ccif.dwait[1];
 	      ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;    
     end
     WAIT1: begin
+    	  ccif.ccwait[0] = 1;    
        //don't do anything, just wait (this came from snooping core 0)
     	  //ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;
     	  
@@ -274,10 +296,11 @@ always_comb begin : OUTPUT
 	      ccif.ramstore = ccif.dstore[0]; //store the content of the SNOOPED cache
 	      ccif.ramaddr = ccif.daddr[0]; //store the address of the SNOOPED cache
 	      ccif.ramWEN = 1;
-	      ccif.dwait[1] = 1;
+	      ccif.dwait[1] = ccif.dwait[0];
 	      ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;
     end
     WB0: begin
+      ccif.ccwait[1] = 1;    
       //writeback 0 means we snooped cache 1 already
       //do C2C -- if cache one has it 
       ccif.dload[0] = ccif.dstore[1]; //transfer to requester cache
@@ -287,9 +310,10 @@ always_comb begin : OUTPUT
       ccif.ramWEN = 1;
       //tell the requester cache to stop waiting
       ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;    
-      ccif.dwait[0] = 1;
+      ccif.dwait[0] = ccif.dwait[1];
     end
     WB1: begin
+      ccif.ccwait[0] = 1;    
       //do C2C
       ccif.dload[1] = ccif.dstore[0]; //transfer to requester cache
       //write back
@@ -297,9 +321,10 @@ always_comb begin : OUTPUT
       ccif.ramaddr = ccif.daddr[0]; //store the address of the SNOOPED cache
       ccif.ramWEN = 1;
       ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;
-      ccif.dwait[1] = 1;
+      ccif.dwait[1] = ccif.dwait[0];
     end
     FETCH1: begin
+      ccif.ccwait[0] = 1;  
       //do stuff -- fetch from mem and give it to the goddamn requester
       ccif.ramaddr = ccif.daddr[1];
       ccif.ramREN = 1;
@@ -307,6 +332,7 @@ always_comb begin : OUTPUT
       ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;
     end
     FETCH0: begin
+      ccif.ccwait[1] = 1;  
       //do stuff -- fetch from mem and give it to the goddamn requester
       ccif.ramaddr = ccif.daddr[0];
       ccif.ramREN = 1;
