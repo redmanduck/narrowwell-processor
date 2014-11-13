@@ -80,7 +80,7 @@ always_comb begin : NEXT_STATE
     	if(ccif.dWEN[0]) begin
     		next_state <= WAIT1;
     	end else begin
-    		next_state <= FETCH1; 
+    		next_state <= SNOOP_WAIT1_B; 
     	end
     end
     SNOOP_WAIT1_B: begin
@@ -103,14 +103,14 @@ always_comb begin : NEXT_STATE
       end
     end
     WAIT0: begin
-      if(!ccif.dWEN[1] && !ccif.dwait) begin
+      if(!ccif.dWEN[1] && !ccif.dwait[1]) begin
         next_state <= WB0; //move forward when cache 0 is done
       end else begin
         next_state <= WAIT0; //wait
       end
     end
     WAIT1: begin
-      if(!ccif.dWEN[0] && !ccif.dwait) begin
+      if(!ccif.dWEN[0] && !ccif.dwait[0]) begin
         next_state <= WB1; //move forward when cache 0 is done
       end else begin
         next_state <= WAIT1; //wait
@@ -172,6 +172,7 @@ always_comb begin : OUTPUT
       ccif.ccsnoopaddr[1] = '0;
 		
       //%%%%%%%% non-coherence stuff, just choose normally %%%%%%%%%%%
+      //TODO: ASK Adam Villasenor , 
       if(ccif.dWEN[0] && !busRd[0] && !busRdX[0]) begin
       	 //write from core 1
          ccif.ramaddr = ccif.daddr[0];  
@@ -247,12 +248,34 @@ always_comb begin : OUTPUT
       end
     end
     WAIT0: begin
-        //don't do anything, just wait (this came after snooping core 1)
-    	ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;
+         //don't do anything, just wait (this came after snooping core 1)
+    	 //writeback 0 means we snooped cache 1 already
+    	
+    	 //---------------------------------------------------------------//
+    	
+	      //do C2C -- if cache one has it 
+	      ccif.dload[0] = ccif.dstore[1]; //transfer to requester cache
+	      //write back
+	      ccif.ramstore = ccif.dstore[1]; //store the content of the SNOOPED cache
+	      ccif.ramaddr = ccif.daddr[1]; //store the address of the SNOOPED cache
+	      ccif.ramWEN = 1;
+	      //tell the requester cache to stop waiting
+	      ccif.dwait[0] = 1;
+	      ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;    
     end
     WAIT1: begin
        //don't do anything, just wait (this came from snooping core 0)
-    	ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;
+    	  //ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;
+    	  
+    	  //---------------------------------------------------------------//
+    	  
+    	  ccif.dload[1] = ccif.dstore[0]; //transfer to requester cache
+	      //write back
+	      ccif.ramstore = ccif.dstore[0]; //store the content of the SNOOPED cache
+	      ccif.ramaddr = ccif.daddr[0]; //store the address of the SNOOPED cache
+	      ccif.ramWEN = 1;
+	      ccif.dwait[1] = 1;
+	      ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;
     end
     WB0: begin
       //writeback 0 means we snooped cache 1 already
@@ -263,7 +286,8 @@ always_comb begin : OUTPUT
       ccif.ramaddr = ccif.daddr[1]; //store the address of the SNOOPED cache
       ccif.ramWEN = 1;
       //tell the requester cache to stop waiting
-      ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;            
+      ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;    
+      ccif.dwait[0] = 1;
     end
     WB1: begin
       //do C2C
@@ -272,7 +296,8 @@ always_comb begin : OUTPUT
       ccif.ramstore = ccif.dstore[0]; //store the content of the SNOOPED cache
       ccif.ramaddr = ccif.daddr[0]; //store the address of the SNOOPED cache
       ccif.ramWEN = 1;
-      ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;
+      ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;
+      ccif.dwait[1] = 1;
     end
     FETCH1: begin
       //do stuff -- fetch from mem and give it to the goddamn requester
