@@ -168,11 +168,27 @@ always_comb begin : OUTPUT
 
  casez(state) 
     IDLE: begin
-      ccif.ccsnoopaddr[0] <= '0;
-      ccif.ccsnoopaddr[1] <= '0;
+      ccif.ccsnoopaddr[0] = '0;
+      ccif.ccsnoopaddr[1] = '0;
 		
       //%%%%%%%% non-coherence stuff, just choose normally %%%%%%%%%%%
-      if(ccif.iREN[0]) begin  //prioritize core 0
+      if(ccif.dWEN[0] && !ccif.cctrans[0]) begin
+      	 //write from core 1
+         ccif.ramaddr = ccif.iaddr[0];  
+         ccif.iload[0] = ccif.ramload; 
+         ccif.ramWEN = 1;
+         ccif.ramREN = 0;
+         ccif.iwait[0] = (ccif.ramstate == ACCESS)? 0:1;
+         ccif.iwait[1] = 1;
+      end else if(ccif.dWEN[1] && !ccif.cctrans[1]) begin
+      	 //write from core 2
+         ccif.ramaddr = ccif.iaddr[1];  
+         ccif.iload[1] = ccif.ramload; 
+         ccif.ramWEN = 1;
+         ccif.ramREN = 0;
+         ccif.iwait[1] = (ccif.ramstate == ACCESS)? 0:1;
+         ccif.iwait[0] = 1;
+      end else if(ccif.iREN[0]) begin  //prioritize core 0
          //serve instruction from CORE 0
          ccif.ramaddr = ccif.iaddr[0];  
          ccif.iload[0] = ccif.ramload; 
