@@ -91,8 +91,11 @@ module dcache (
   always_comb begin : next_state_logic_fsm
 
      next_state = IDLE;
-     ccif.flushing[CPUID] = 0;            
-     if(state == IDLE && !ccif.ccwait[CPUID]) begin
+     ccif.flushing[CPUID] = 0;     
+     if(ccif.ccwait[CPUID] && state == IDLE) begin
+     	next_state = IDLE;
+     	//dont exit idle if there is a ccwait
+     end else if(state == IDLE) begin
      	/*
      	 * ###############  IDLE #################: 
      	 * 1. we can get snooped, and may need to transit to do cache writeback ( + c2c) (not normal writeback)
@@ -102,7 +105,9 @@ module dcache (
      	
         if (dpif.halt) begin
             next_state = flush1;
-                  	  ccif.flushing[CPUID] = 1;            
+                  	  ccif.flushing[CPUID] = 1;   
+        end else if(!hit_out && dpif.dmemWEN) begin
+        	next_state = FETCH1;
         end else if(snoop_hit) begin
         	if (ccif.ccinv[CPUID] == 1) begin
         		//M or S , transition to I
@@ -117,7 +122,7 @@ module dcache (
         		
         		next_state = CC_WB1; //writeback that snooped block
         	end
-
+	    	
         end else if(hit_out) begin //&& dpif.dmemREN
             //want to read and its in the table, so we just read it
             next_state = IDLE;
@@ -127,7 +132,7 @@ module dcache (
             next_state = FETCH1;
         end else if(!hit_out && cway[cur_lru].dtable[rq_index].dirty && cway[cur_lru].dtable[rq_index].valid) begin
             next_state = WB1;
-        end
+        end 
 
      end else if(state == CC_INVALIDATE) begin
      	/**
@@ -252,6 +257,7 @@ module dcache (
      	 * ####### FETCH2 ###########
      	 * Fetch the second word
      	 */
+     	
         if(!ccif.dwait[CPUID]) begin
           next_state = IDLE;
         end else begin

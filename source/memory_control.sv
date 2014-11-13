@@ -34,9 +34,9 @@ always_comb begin : NEXT_STATE
       end else if(ccif.cctrans[0] || ccif.cctrans[1]) begin
         //there is a coherency stuff going on
         next_state <= ARBITRATE;
-      end else begin // if(ccif.dWEN[0] || ccif.dWEN[1])
+      end else if (!(ccif.dWEN[0] || ccif.dWEN[1])) begin //
         next_state <= IDLE;
-      end
+      end 
     end
     ARBITRATE: begin 
       if(ccif.dWEN[0] || ccif.dREN[0]) begin
@@ -281,7 +281,7 @@ always_comb begin : OUTPUT
 	      ccif.ramaddr = ccif.daddr[1]; //store the address of the SNOOPED cache
 	      ccif.ramWEN = 1;
 	      //tell the requester cache to stop waiting
-	      ccif.dwait[0] = ccif.dwait[1];
+	      ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;
 	      ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;    
     end
     WAIT1: begin
@@ -296,8 +296,8 @@ always_comb begin : OUTPUT
 	      ccif.ramstore = ccif.dstore[0]; //store the content of the SNOOPED cache
 	      ccif.ramaddr = ccif.daddr[0]; //store the address of the SNOOPED cache
 	      ccif.ramWEN = 1;
-	      ccif.dwait[1] = ccif.dwait[0];
-	      ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;
+	      ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;
+	      ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1; //follow
     end
     WB0: begin
       ccif.ccwait[1] = 1;    
@@ -310,7 +310,7 @@ always_comb begin : OUTPUT
       ccif.ramWEN = 1;
       //tell the requester cache to stop waiting
       ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;    
-      ccif.dwait[0] = ccif.dwait[1];
+      ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;
     end
     WB1: begin
       ccif.ccwait[0] = 1;    
@@ -321,7 +321,7 @@ always_comb begin : OUTPUT
       ccif.ramaddr = ccif.daddr[0]; //store the address of the SNOOPED cache
       ccif.ramWEN = 1;
       ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;
-      ccif.dwait[1] = ccif.dwait[0];
+      ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;
     end
     FETCH1: begin
       ccif.ccwait[0] = 1;  
