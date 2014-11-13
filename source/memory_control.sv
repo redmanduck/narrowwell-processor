@@ -175,20 +175,8 @@ always_comb begin : OUTPUT
       ccif.ccsnoopaddr[1] = '0;
 		
       //%%%%%%%% non-coherence stuff, just choose normally %%%%%%%%%%%
-      //TODO: ASK Adam Villasenor --
-      /*
-       * prob: the memory controller is doing coherence stuff ,
-       *       suddenly the cache 1 goes into FLUSH
-       *       the memory controller tells the flush to wait
-       *       the flush waited
-       *       memory controller is waiting for dWEN
-       *       but since cache 1 is doing flush, its going to send out dWEN
-       *       the memory controller thought cache 1 is snooping
-       *       so it turned off dwait
-       *       the cache thought that that dwait was meant for the flush (not snoop)
-       *       so it moves on (fake flush)
-       */
-      if(ccif.dWEN[0] && !busRd[0] && !busRdX[0]) begin
+      //Eric: "it could be either evicting or flushing"
+      if(ccif.dWEN[0] && !busRd[1] && !busRdX[1]) begin
       	 //write from core 1
          ccif.ramaddr = ccif.daddr[0];  
          ccif.ramstore = ccif.dstore[0]; 
@@ -196,7 +184,7 @@ always_comb begin : OUTPUT
          ccif.ramREN = 0;
          ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;
          ccif.dwait[1] = 1;
-      end else if(ccif.dWEN[1] && !busRd[1] && !busRdX[1]) begin
+      end else if(ccif.dWEN[1] && !busRd[0] && !busRdX[0]) begin
       	 //write from core 2
          ccif.ramaddr = ccif.daddr[1];  
          ccif.ramstore = ccif.dstore[1]; 

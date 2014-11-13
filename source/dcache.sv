@@ -77,8 +77,8 @@ module dcache (
   assign snoop_tag = snoop_addr.tag;
   assign snoop_offset = snoop_addr.blkoff;
 
-  assign snoop_hit1 = (cway[1].dtable[snoop_index].tag == snoop_tag) && cway[1].dtable[snoop_index].valid; //hit on cache 1
-  assign snoop_hit0 = (cway[0].dtable[snoop_index].tag == snoop_tag) && cway[0].dtable[snoop_index].valid; //hit on cache 2
+  assign snoop_hit1 = (cway[1].dtable[snoop_index].tag == snoop_tag) && cway[1].dtable[snoop_index].valid; //hit on cache way 1
+  assign snoop_hit0 = (cway[0].dtable[snoop_index].tag == snoop_tag) && cway[0].dtable[snoop_index].valid; //hit on cache way 2
   assign snoop_hit =  snoop_hit1 || snoop_hit0; //its like a hit_out but its a snoop hit
   assign snoop_way = snoop_hit1 ? 1 : 0; //what way did the snoop hit
 
@@ -108,7 +108,7 @@ module dcache (
                   	  ccif.flushing[CPUID] = 1;   
         end else if(!hit_out && dpif.dmemWEN) begin
         	next_state = FETCH1; //when you have a cache miss, you should fetch
-        end else if(snoop_hit) begin
+        end else if(snoop_hit && ccif.dwait[CPUID]) begin
         	if (ccif.ccinv[CPUID] == 1) begin
         		//M or S , transition to I
 
@@ -363,8 +363,8 @@ module dcache (
 		ccif.dWEN[CPUID] = 1;
 		ccif.daddr[CPUID] = { snoop_tag, snoop_index, 3'b000};
 		ccif.dstore[CPUID] = cway[snoop_way].dtable[snoop_index].block[0:0]; 
-        ccif.ccwrite[CPUID] = 1;
         
+		ccif.ccwrite[CPUID] = 0; 
         
       end
       CC_WB2: begin
@@ -376,7 +376,6 @@ module dcache (
       	ccif.dWEN[CPUID] = 1;
       	ccif.daddr[CPUID] = { snoop_tag, snoop_index, 3'b100};
       	ccif.dstore[CPUID] = cway[snoop_way].dtable[snoop_index].block[1:1]; 
-      	ccif.ccwrite[CPUID] = 1;      	// the current block to be no longer dirty
       	
       	// the current block (both words) to be no longer dirty
 		which_word = 0; //dont matter , just be consistent
@@ -389,9 +388,8 @@ module dcache (
         
         FLUSH_INDEX_INCREM_EN = 0;
         CACHE_WEN = 1;
-
+        ccif.ccwrite[CPUID] = 0; 
         ccif.cctrans[CPUID] = 0; //downgrade transition 
-		        
       end
       flush1: begin
       	   /*
@@ -557,6 +555,9 @@ module dcache (
                     write_tag = rq_tag;
                     write_data = dpif.dmemstore;
                     
+                    
+               		ccif.ccwrite[CPUID] = 1; 
+               
                     //if upgrade from S -> M , cctrans
                     if(cway[!hit0].dtable[rq_index].valid && !cway[!hit0].dtable[rq_index].dirty) begin
                     	ccif.cctrans[CPUID] = 1; 
@@ -655,6 +656,10 @@ module dcache (
                 CACHE_WEN = 1;
                 write_dirty = 1;
                 write_valid = 1;
+                
+                
+             	ccif.ccwrite[CPUID] = 1; 
+           
                 which_word = rq_blockoffset;
                 write_data = dpif.dmemstore;
                 write_tag = rq_tag;
