@@ -160,7 +160,7 @@ module dcache (
      	 * ####### FLUSH ###########
      	 * This is a non coherence state where we flush the data off the tables
      	 */
-        if(!ccif.dwait[CPUID] || !flushset[1].dirty) begin
+        if(!ccif.dwait[CPUID] || !flushset[0].dirty) begin
           next_state = flush2;
         end else begin
            next_state = flush1;
@@ -193,9 +193,9 @@ module dcache (
      	 * ####### FLUSH ###########
      	 * This is a non coherence state where we flush the data off the tables
      	 */
-        if(!ccif.dwait[CPUID] || !flushset[0].dirty) begin
+        if(!ccif.dwait[CPUID] || !flushset[1].dirty) begin
            if(flush_index == total_set -1) begin //done flushing if we flushed 8 rows already
-              next_state = ALL_FLUSHED;
+              next_state = DONE_EVERYTHING; //took out hitocunt
            end else begin
               next_state = flush1;
            end
