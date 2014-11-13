@@ -107,7 +107,7 @@ module dcache (
             next_state = flush1;
                   	  ccif.flushing[CPUID] = 1;   
         end else if(!hit_out && dpif.dmemWEN) begin
-        	next_state = FETCH1;
+        	next_state = FETCH1; //when you have a cache miss, you should fetch
         end else if(snoop_hit) begin
         	if (ccif.ccinv[CPUID] == 1) begin
         		//M or S , transition to I
