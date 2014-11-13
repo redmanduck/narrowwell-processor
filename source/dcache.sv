@@ -160,7 +160,7 @@ module dcache (
      	 * ####### FLUSH ###########
      	 * This is a non coherence state where we flush the data off the tables
      	 */
-        if(!ccif.dwait[CPUID]) begin
+        if(!ccif.dwait[CPUID] || !flushset[1].dirty) begin
           next_state = flush2;
         end else begin
            next_state = flush1;
@@ -171,7 +171,7 @@ module dcache (
      	 * ####### FLUSH ###########
      	 * This is a non coherence state where we flush the data off the tables
      	 */
-        if(!ccif.dwait[CPUID]) begin
+        if(!ccif.dwait[CPUID] || !flushset[0].dirty) begin
            next_state = flush3;
         end else begin
            next_state = flush2;
@@ -182,7 +182,7 @@ module dcache (
      	 * This is a non coherence state where we flush the data off the tables
      	 */
 
-     	if(!ccif.dwait[CPUID]) begin
+     	if(!ccif.dwait[CPUID] || !flushset[1].dirty) begin
           next_state = flush4;
         end else begin
            next_state = flush3;
@@ -193,7 +193,7 @@ module dcache (
      	 * ####### FLUSH ###########
      	 * This is a non coherence state where we flush the data off the tables
      	 */
-        if(!ccif.dwait[CPUID]) begin
+        if(!ccif.dwait[CPUID] || !flushset[0].dirty) begin
            if(flush_index == total_set -1) begin //done flushing if we flushed 8 rows already
               next_state = ALL_FLUSHED;
            end else begin
