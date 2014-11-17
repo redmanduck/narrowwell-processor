@@ -71,7 +71,7 @@ add wave -noupdate -expand -group {DCACHE1 (CORE 2)} -color Yellow /system_tb/DU
 add wave -noupdate -expand -group {DCACHE1 (CORE 2)} -color Yellow /system_tb/DUT/CPU/CM1/DCACHE/rq_blockoffset
 add wave -noupdate -expand -group {DCACHE1 (CORE 2)} -color Yellow /system_tb/DUT/CPU/CM1/DCACHE/rq_index
 add wave -noupdate -expand -group {DCACHE1 (CORE 2)} -color Yellow /system_tb/DUT/CPU/CM1/DCACHE/rq_tag
-add wave -noupdate -expand -group {DCACHE1 (CORE 2)} -color Yellow /system_tb/DUT/CPU/CM1/DCACHE/snoop_addr
+add wave -noupdate -expand -group {DCACHE1 (CORE 2)} -color Yellow -expand -subitemconfig {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[25]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[24]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[23]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[22]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[21]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[20]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[19]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[18]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[17]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[16]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[15]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[14]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[13]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[12]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[11]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[10]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[9]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[8]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[7]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[6]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[5]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[4]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[3]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[2]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[1]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.tag[0]} {-color Yellow} /system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.idx {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.idx[2]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.idx[1]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.idx[0]} {-color Yellow} /system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.blkoff {-color Yellow} /system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.bytoff {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.bytoff[1]} {-color Yellow} {/system_tb/DUT/CPU/CM1/DCACHE/snoop_addr.bytoff[0]} {-color Yellow}} /system_tb/DUT/CPU/CM1/DCACHE/snoop_addr
 add wave -noupdate -expand -group {DCACHE1 (CORE 2)} -color Yellow /system_tb/DUT/CPU/CM1/DCACHE/snoop_hit
 add wave -noupdate -expand -group {DCACHE1 (CORE 2)} -color Yellow /system_tb/DUT/CPU/CM1/DCACHE/snoop_hit0
 add wave -noupdate -expand -group {DCACHE1 (CORE 2)} -color Yellow /system_tb/DUT/CPU/CM1/DCACHE/snoop_hit1
@@ -324,19 +324,20 @@ add wave -noupdate -expand -group ccif -color {Green Yellow} /system_tb/DUT/CPU/
 add wave -noupdate -expand -group ccif -color {Green Yellow} /system_tb/DUT/CPU/ccif/dstore
 add wave -noupdate -expand -group ccif -color {Green Yellow} -expand -subitemconfig {{/system_tb/DUT/CPU/ccif/iaddr[1]} {-color {Green Yellow} -height 17} {/system_tb/DUT/CPU/ccif/iaddr[0]} {-color {Green Yellow} -height 17}} /system_tb/DUT/CPU/ccif/iaddr
 add wave -noupdate -expand -group ccif -color {Green Yellow} /system_tb/DUT/CPU/ccif/daddr
-add wave -noupdate -expand -group ccif -color {Green Yellow} /system_tb/DUT/CPU/ccif/ccwait
+add wave -noupdate -expand -group ccif -color {Green Yellow} -expand -subitemconfig {{/system_tb/DUT/CPU/ccif/ccwait[1]} {-color {Green Yellow}} {/system_tb/DUT/CPU/ccif/ccwait[0]} {-color {Green Yellow}}} /system_tb/DUT/CPU/ccif/ccwait
 add wave -noupdate -expand -group ccif -color {Green Yellow} /system_tb/DUT/CPU/ccif/ccinv
-add wave -noupdate -expand -group ccif -color {Green Yellow} -expand -subitemconfig {{/system_tb/DUT/CPU/ccif/ccwrite[1]} {-color {Green Yellow}} {/system_tb/DUT/CPU/ccif/ccwrite[0]} {-color {Green Yellow}}} /system_tb/DUT/CPU/ccif/ccwrite
+add wave -noupdate -expand -group ccif -color {Green Yellow} -expand -subitemconfig {{/system_tb/DUT/CPU/ccif/ccwrite[1]} {-color {Green Yellow} -height 17} {/system_tb/DUT/CPU/ccif/ccwrite[0]} {-color {Green Yellow} -height 17}} /system_tb/DUT/CPU/ccif/ccwrite
 add wave -noupdate -expand -group ccif -color {Green Yellow} -expand -subitemconfig {{/system_tb/DUT/CPU/ccif/cctrans[1]} {-color {Green Yellow} -height 17} {/system_tb/DUT/CPU/ccif/cctrans[0]} {-color {Green Yellow} -height 17}} /system_tb/DUT/CPU/ccif/cctrans
-add wave -noupdate -expand -group ccif -color {Green Yellow} /system_tb/DUT/CPU/ccif/ccsnoopaddr
+add wave -noupdate -expand -group ccif -color {Green Yellow} -expand -subitemconfig {{/system_tb/DUT/CPU/ccif/ccsnoopaddr[1]} {-color {Green Yellow}} {/system_tb/DUT/CPU/ccif/ccsnoopaddr[0]} {-color {Green Yellow}}} /system_tb/DUT/CPU/ccif/ccsnoopaddr
 add wave -noupdate -expand -group ccif -color {Green Yellow} /system_tb/DUT/CPU/ccif/ramWEN
 add wave -noupdate -expand -group ccif -color {Green Yellow} /system_tb/DUT/CPU/ccif/ramREN
 add wave -noupdate -expand -group ccif -color {Green Yellow} /system_tb/DUT/CPU/ccif/ramstate
 add wave -noupdate -expand -group ccif -color {Green Yellow} /system_tb/DUT/CPU/ccif/ramaddr
 add wave -noupdate -expand -group ccif -color {Green Yellow} /system_tb/DUT/CPU/ccif/ramstore
 add wave -noupdate -expand -group ccif -color {Green Yellow} /system_tb/DUT/CPU/ccif/ramload
+add wave -noupdate -expand -group ccif /system_tb/DUT/CPU/CC/ccif/flushing
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {3680000 ps} 0}
+WaveRestoreCursors {{Cursor 1} {1270954 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 175
 configure wave -valuecolwidth 224
@@ -352,4 +353,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ps} {4600440 ps}
+WaveRestoreZoom {662762 ps} {1682398 ps}
