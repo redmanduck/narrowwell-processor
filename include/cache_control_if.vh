@@ -24,6 +24,7 @@ interface cache_control_if;
   logic   [CPUS-1:0]       iwait, dwait, iREN, dREN, dWEN;
   word_t  [CPUS-1:0]       iload, dload, dstore;
   word_t  [CPUS-1:0]       iaddr, daddr;
+  logic   [CPUS-1:0]       flushing;
 
   // coherence
   // CPUS = number of cpus parameter passed from system -> cc
@@ -48,7 +49,7 @@ interface cache_control_if;
             // ram inputs
             ramload, ramstate,
             // coherence inputs from cache
-            ccwrite, cctrans,
+            ccwrite, cctrans, flushing,
             // cache outputs
     output  iwait, dwait, iload, dload,
             // ram outputs
@@ -68,7 +69,7 @@ interface cache_control_if;
     input   dwait, dload,
             ccwait, ccinv, ccsnoopaddr,
     output  dREN, dWEN, daddr, dstore,
-            ccwrite, cctrans
+            ccwrite, cctrans, flushing
   );
   modport caches (
     input   iwait, iload, dwait, dload,
