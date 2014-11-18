@@ -183,10 +183,10 @@ module dcache (
 
  //assign dpif.dmemload = (hit0 ? cway[0].dtable[rq_index].block[rq_blockoffset] : (hit1 ? cway[1].dtable[rq_index].block[rq_blockoffset] : 32'hbad1bad2 ));
 
- always_comb begin: Eric
+ always_comb begin: Eric_dmemloader
    if(hit0 == 1) begin
       if(rq_blockoffset == 0) begin
-        dpif.dmemload = cway[0].dtable[rq_index].block[0:0];
+        dpif.dmemload = cway[0].dtable[rq_index].block[0:0]; //ask eric why 0:0?
       end else begin
         dpif.dmemload = cway[0].dtable[rq_index].block[1:1];
       end
@@ -203,21 +203,12 @@ module dcache (
 
   always_comb begin : output_logic_fsm
     CACHE_WEN = 0;
-    // ccif.dREN = 0;
-    // ccif.dWEN = 0;
-
-    // which_word = 0;
-    // write_dirty = 0;
-    // write_valid = 0;
-    // write_tag = 0;
-    // write_data = 0;
     dpif.flushed = 0;
     hitcount_next = hitcount;
     hit_wait_count_next = hit_wait_count + 1;
     next_lru = LRU[rq_index];
     FLUSH_INDEX_INCREM_EN = 0;
 
-    ccif.dstore[CPUID] = 0;
 
     casez(state)
       flush1: begin
@@ -314,6 +305,7 @@ module dcache (
       done_everything: begin
           ccif.dREN[CPUID] = 0;
           ccif.dWEN[CPUID] = 0;
+          ccif.daddr[CPUID] = '0;
           dpif.flushed = 1;
           which_word = 0;
           write_dirty = 0;
@@ -324,6 +316,7 @@ module dcache (
       idle: begin
             ccif.dREN[CPUID] = 0;
             ccif.dWEN[CPUID] = 0;
+            ccif.daddr[CPUID] = '0;
             hit_wait_count_next = 0;
             which_word = 0;
             write_dirty = 0;
@@ -334,13 +327,15 @@ module dcache (
             if(hit_out) begin
                 next_lru = hit0;
 
-                if(hit_wait_count < 1) begin
+                if(hit_wait_count == 0) begin
                     hitcount_next = hitcount + 1;
+                end else begin
+                    hitcount_next = hitcount;
                 end
 
                 if(dpif.dmemWEN == 1'b1) begin
 
-                    next_lru = !LRU[rq_index]; //?
+                    next_lru = !LRU[rq_index]; //on write hit, flip because we just wrote to the t[lru]
 
                     $display("IDLE WRITING CACHE: LRU = %d, IDX = %d, data = %h", cur_lru, rq_index, dpif.dmemstore);
                     FLUSH_INDEX_INCREM_EN = 0;
@@ -351,6 +346,9 @@ module dcache (
                     write_valid = 1;
                     write_tag = rq_tag;
                     write_data = dpif.dmemstore;
+                end else begin
+                    CACHE_WEN = 0;
+                    FLUSH_INDEX_INCREM_EN = 0;
                 end
 
             end else begin
@@ -373,6 +371,7 @@ module dcache (
       fetch1: begin
           ccif.dREN[CPUID] = 1;
           ccif.dWEN[CPUID] = 0;
+
           CACHE_WEN = 1;
           which_word = 0;
           write_dirty = 0;
@@ -387,37 +386,18 @@ module dcache (
           ccif.dREN[CPUID] = 1;
           ccif.dWEN[CPUID] = 0;
           CACHE_WEN = 1;
-          which_word = 1;
-          write_dirty = 0;
+          which_word = hit_out && dpif.dmemWEN ? rq_blockoffset : 1;
+          write_dirty = (hit_out && dpif.dmemWEN ? 1 : 0);
           write_tag = rq_tag;
-          write_data = ccif.dload[CPUID];
+          write_data = hit_out && dpif.dmemWEN ? dpif.dmemstore : ccif.dload[CPUID];
+          write_valid = (hit_out && dpif.dmemWEN || !ccif.dwait[CPUID]) ? 1 : 0;
 
           ccif.daddr[CPUID] = {rq_tag, rq_index, 3'b100};
 
           FLUSH_INDEX_INCREM_EN  = 0;
-          if(!ccif.dwait[CPUID]) begin
-            write_valid = 1;
-          end else begin
-            write_valid = 0;
-          end
-
-          if(hit_out && dpif.dmemWEN) begin
-                $display("FETCH2 WRITING CACHE: LRU = %d, IDX = %d, data = %h", cur_lru, rq_index, dpif.dmemstore);
-
-                FLUSH_INDEX_INCREM_EN  = 0;
-                CACHE_WEN = 1;
-                write_dirty = 1;
-                write_valid = 1;
-                which_word = rq_blockoffset;
-                write_data = dpif.dmemstore;
-                write_tag = rq_tag;
-
-          end
 
       end
       wb1: begin
-          //writeback data in table to RAM
-
           CACHE_WEN = 0;
           which_word = 0;
           write_dirty = 0;
@@ -430,7 +410,6 @@ module dcache (
           ccif.dWEN[CPUID] = 1;
           ccif.dREN[CPUID] = 0;
           ccif.dstore[CPUID] = cway[cur_lru].dtable[rq_index].block[0:0]; //cur_lru ---> (hit0 ? 1 : 0)
-          // $display("HAO1 -------- %h", cway[cur_lru].dtable[rq_index].block[0:0]);
       end
       wb2: begin
           CACHE_WEN = 0;
@@ -447,18 +426,15 @@ module dcache (
           ccif.dREN[CPUID] = 0;
           ccif.dstore[CPUID] = cway[cur_lru].dtable[rq_index].block[1:1]; //(hit0 ? 1 : 0)
 
-          // $display("HAO2 -------- %h", cway[cur_lru].dtable[rq_index].block[1:1]);
-
       end
       default: begin
-        $display("entered default");
+        ccif.dstore[CPUID] = '0;
         CACHE_WEN = 0;
-        //dont do anything
         ccif.dREN[CPUID] = 0;
         ccif.dWEN[CPUID] = 0;
         dpif.flushed = 0;
         hitcount_next = hitcount;
-
+		    ccif.daddr[CPUID] = '0;
         FLUSH_INDEX_INCREM_EN  = 0;
         write_dirty = 0;
         write_valid = 0;
@@ -474,12 +450,12 @@ module dcache (
       if(!nRST) begin
           cway <= '0;
       end else if(CACHE_WEN) begin
-          if(hit_out) begin
+          if(hit_out) begin //write hits
                 cway[!hit0].dtable[rq_index].tag <= write_tag;
                 cway[!hit0].dtable[rq_index].block[which_word] <= write_data; //ccif.dload[CPUID]
                 cway[!hit0].dtable[rq_index].valid <= write_valid;
                 cway[!hit0].dtable[rq_index].dirty <= write_dirty;
-          end else begin
+          end else begin //write miss
                 cway[cur_lru].dtable[rq_index].tag <= write_tag;
                 cway[cur_lru].dtable[rq_index].block[which_word] <= write_data; //ccif.dload[CPUID]
                 cway[cur_lru].dtable[rq_index].valid <= write_valid;
@@ -500,14 +476,11 @@ module dcache (
     if(!nRST) begin
         state <= idle;
         hitcount <= 0;
-
         hit_wait_count <= 0;
     end else begin
         state <= next_state;
         hitcount <= hitcount_next;
         hit_wait_count <= hit_wait_count_next;
-        //$display("idle count : %d", hit_wait_count);
-        //$display("hit count : %d", hitcount);
     end
   end
 

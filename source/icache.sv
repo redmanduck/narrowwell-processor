@@ -18,12 +18,12 @@ module icache (
   typedef struct packed{
     logic [25:0] tag;
     word_t data;
-    logic valid ;   
+    logic valid ;
   } CacheTable;
 
 
   CacheTable [total_set - 1:0] dtable;
-  
+
   typedef enum logic [1:0] {idle, fetch} StateType;
 
   StateType state, next_state;
@@ -52,9 +52,9 @@ module icache (
   //           dtable[rq_index].tag <= x_tag;
   //           dtable[rq_index].valid <= x_valid;
   //           dtable[rq_index].data <= x_data;
-  //     end 
+  //     end
   // end
-/*  
+/*
   always_comb begin: output_logic
     x_tag = '0;
     x_valid = 0;
@@ -70,8 +70,8 @@ module icache (
      endcase
   end*/
 
-  always_comb  begin : avinash
-    if(!nRST) begin 
+  always_ff @ (posedge CLK, negedge nRST) begin : avinash
+    if(!nRST) begin
             dtable <= '0;
     end else if(CACHE_WEN) begin
             dtable[x_index].tag = x_tag;
