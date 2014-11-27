@@ -15,7 +15,7 @@ import cpu_types_pkg::*;
 parameter CPUS = 2;
 parameter CPUID = 0;
 
-typedef enum {IDLE, ARBITRATE, SNOOP0, SNOOP1, PRE_WB0, PRE_WB1, WB0, WB1, FETCH0, FETCH1, SNOOP_WT0_A, SNOOP_WT0_B, SNOOP_WT1_A, SNOOP_WT1_B} u_state;
+typedef enum {IDLE, ARBITRATE, SNOOP0, SNOOP1, WAIT0, WAIT1, WB0, WB1, FETCH0, FETCH1, SNOOP_WAIT0_A, SNOOP_WAIT0_B, SNOOP_WAIT1_A, SNOOP_WAIT1_B} u_state;
 
 u_state next_state, state;
 
@@ -49,49 +49,49 @@ always_comb begin : NEXT_STATE
     end
     SNOOP0: begin
       if(ccif.dWEN[1]) begin
-        //if cache 0 WEN went low, its done, move on
-        next_state <= PRE_WB0; 
+        //its doing writeback
+        next_state <= WAIT0;  //wa
       end else begin
         //wait 
-      	next_state <= SNOOP_WT0_A;
+      	next_state <= SNOOP_WAIT0_A;
       end
     end
-    SNOOP_WT0_A: begin
+    SNOOP_WAIT0_A: begin
     	/*
     	 * Wait for dWEN , if we snoop and the other cache dont respond (with dWEN) we know to move on to fetch
     	 */
     	if(ccif.dWEN[1]) begin
-    		next_state <= PRE_WB0;
+    		next_state <= WAIT0;
     	end else begin
-    		next_state <= SNOOP_WT0_B; 
+    		next_state <= SNOOP_WAIT0_B; 
     	end
     end
-    SNOOP_WT0_B: begin
+    SNOOP_WAIT0_B: begin
     	/*
-    	 * second wait cycle after SNOOP_WT0_A
+    	 * second wait cycle after SNOOP_WAIT0_A
     	 */
     	if(ccif.dWEN[1]) begin
-    		next_state <= PRE_WB0;
+    		next_state <= WAIT0;
     	end else begin
     		next_state <= FETCH0; 
     	end
     end
-    SNOOP_WT1_A: begin
+    SNOOP_WAIT1_A: begin
     	/*
     	 * Wait for dWEN , if we snoop and the other cache dont respond (with dWEN) we know to move on to fetch
     	 */
     	if(ccif.dWEN[0]) begin
-    		next_state <= PRE_WB1;
+    		next_state <= WAIT1;
     	end else begin
-    		next_state <= SNOOP_WT1_B; 
+    		next_state <= SNOOP_WAIT1_B; 
     	end
     end
-    SNOOP_WT1_B: begin
+    SNOOP_WAIT1_B: begin
     	/*
-    	 * second wait cycle after SNOOP_WT0_B
+    	 * second wait cycle after SNOOP_WAIT0_B
     	 */
     	if(ccif.dWEN[0]) begin
-    		next_state <= PRE_WB1;
+    		next_state <= WAIT1;
     	end else begin
     		next_state <= FETCH1; 
     	end
@@ -99,24 +99,24 @@ always_comb begin : NEXT_STATE
     SNOOP1: begin
       if(ccif.dWEN[0]) begin
         //if cache 0 WEN went low, its done, move on
-        next_state <= PRE_WB1; 
+        next_state <= WAIT1; 
       end else begin
         //wait 
-        next_state <= SNOOP_WT1_A;
+        next_state <= SNOOP_WAIT1_A;
       end
     end
-    PRE_WB0: begin
+    WAIT0: begin
       if(!ccif.dwait[1] ) begin
         next_state <= WB0; //move forward when cache 0 is done
       end else begin
-        next_state <= PRE_WB0; //wait
+        next_state <= WAIT0; //wait
       end
     end
-    PRE_WB1: begin
+    WAIT1: begin
       if(!ccif.dwait[0] ) begin
         next_state <= WB1; //move forward when cache 0 is done
       end else begin
-        next_state <= PRE_WB1; //wait
+        next_state <= WAIT1; //wait
       end
     end
     FETCH0: begin
@@ -137,7 +137,7 @@ always_comb begin : NEXT_STATE
     end
     WB0: begin
       //do cache to cache transfer and writeback to memory
-      if(!ccif.dwait[1]) begin  //TODO: fishy maybe // && !ccif.dWEN[1]
+      if(!ccif.dwait[1] && !ccif.dWEN[1]) begin  //TODO: fishy maybe
         next_state <= FETCH0;
       end else begin
         next_state <= WB0;
@@ -145,7 +145,7 @@ always_comb begin : NEXT_STATE
     end
     WB1: begin
        //do cache to cache transfer and writeback to memory
-      if(!ccif.dwait[0] ) begin    // && !ccif.dWEN[1]
+      if(!ccif.dwait[0] && !ccif.dWEN[0]) begin   
         next_state <= FETCH1;
       end else begin
         next_state <= WB1;
@@ -176,7 +176,7 @@ always_comb begin : OUTPUT
 		
       //%%%%%%%% non-coherence stuff, just choose normally %%%%%%%%%%%
       //Eric: "it could be either evicting or flushing"
-      if(ccif.dWEN[0]) begin
+      if(ccif.dWEN[0] && !busRd[1] && !busRdX[1]) begin
       	 //write from core 1
          ccif.ramaddr = ccif.daddr[0];  
          ccif.ramstore = ccif.dstore[0]; 
@@ -184,7 +184,7 @@ always_comb begin : OUTPUT
          ccif.ramREN = 0;
          ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;
          ccif.dwait[1] = 1;
-      end else if(ccif.dWEN[1]) begin
+      end else if(ccif.dWEN[1] && !busRd[0] && !busRdX[0]) begin
       	 //write from core 2
          ccif.ramaddr = ccif.daddr[1];  
          ccif.ramstore = ccif.dstore[1]; 
@@ -219,8 +219,6 @@ always_comb begin : OUTPUT
       ccif.ccwait[1] = 1;
       //both cores wait
       ccif.iwait = 3;
-      
-      
     end
     SNOOP0: begin
       /*
@@ -257,7 +255,7 @@ always_comb begin : OUTPUT
         ccif.ccinv[0] = 0; 
       end
     end
-    PRE_WB0: begin
+    WAIT0: begin
     	ccif.ccwait[1] = 1;    
          //don't do anything, just wait (this came after snooping core 1)
     	 //writeback 0 means we snooped cache 1 already
@@ -274,9 +272,9 @@ always_comb begin : OUTPUT
 	      ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;
 	      ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;    
     end
-    PRE_WB1: begin
+    WAIT1: begin
     	  ccif.ccwait[0] = 1;    
-       	  //don't do anything, just wait (this came from snooping core 0)
+       //don't do anything, just wait (this came from snooping core 0)
     	  //ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;
     	  
     	  //---------------------------------------------------------------//
@@ -314,9 +312,6 @@ always_comb begin : OUTPUT
       ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;
     end
     FETCH1: begin
-      ccif.ccsnoopaddr[0] = '0;
-      ccif.ccsnoopaddr[1] = '0;
-      
       ccif.ccwait[0] = 1;  
       //do stuff -- fetch from mem and give it to the goddamn requester
       ccif.ramaddr = ccif.daddr[1];
@@ -325,9 +320,6 @@ always_comb begin : OUTPUT
       ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;
     end
     FETCH0: begin
-      ccif.ccsnoopaddr[0] = '0;
-      ccif.ccsnoopaddr[1] = '0;
-      
       ccif.ccwait[1] = 1;  
       //do stuff -- fetch from mem and give it to the goddamn requester
       ccif.ramaddr = ccif.daddr[0];
@@ -335,17 +327,13 @@ always_comb begin : OUTPUT
       ccif.ramstore = ccif.dstore[0];
       ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;
     end
-    SNOOP_WT1_B: begin
-    	ccif.ccwait[0] = 1;
+    SNOOP_WAIT1_B: begin
     end
-    SNOOP_WT1_A: begin
-    	ccif.ccwait[0] = 1;
+    SNOOP_WAIT1_A: begin
     end
-    SNOOP_WT0_A: begin 
-    	ccif.ccwait[1] = 1;
+    SNOOP_WAIT0_A: begin 
     end
-    SNOOP_WT0_B: begin
-    	ccif.ccwait[1] = 1;
+    SNOOP_WAIT0_B: begin
     end
  endcase
 end
