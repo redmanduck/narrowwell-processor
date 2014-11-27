@@ -71,7 +71,7 @@ module dcache (
 
 	assign dpif.dhit = hit_out;
 
-	assign snoop_addr = dcachef_t'(ccif.ccsnoopaddr);
+	assign snoop_addr = dcachef_t'(ccif.ccsnoopaddr[CPUID]);
 
 	assign snoop_index = snoop_addr.idx; 
 	assign snoop_tag = snoop_addr.tag;

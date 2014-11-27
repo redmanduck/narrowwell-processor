@@ -15,7 +15,10 @@ import cpu_types_pkg::*;
 parameter CPUS = 2;
 parameter CPUID = 0;
 
-typedef enum {IDLE, ARBITRATE, SNOOP0, SNOOP1, PRE_WB0, PRE_WB1, WB0, WB1, FETCH0, FETCH1, SNOOP_WT0_A, SNOOP_WT0_B, SNOOP_WT1_A, SNOOP_WT1_B} u_state;
+typedef enum {IDLE, ARBITRATE, SNOOP0, SNOOP1, PRE_WB0, PRE_WB1, 
+	WB0, WB1, FETCH0, FETCH1, 
+	SNOOP_WT0_A, SNOOP_WT0_B, SNOOP_WT0_C, SNOOP_WT0_D,
+	SNOOP_WT1_A, SNOOP_WT1_B, SNOOP_WT1_C, SNOOP_WT1_D} u_state;
 
 u_state next_state, state;
 
@@ -73,6 +76,26 @@ always_comb begin : NEXT_STATE
     	if(ccif.dWEN[1]) begin
     		next_state <= PRE_WB0;
     	end else begin
+    		next_state <= SNOOP_WT0_C; 
+    	end
+    end
+    SNOOP_WT0_C: begin
+    	/*
+    	 * 3rd wait cycle after SNOOP_WT0_A
+    	 */
+    	if(ccif.dWEN[1]) begin
+    		next_state <= PRE_WB0;
+    	end else begin
+    		next_state <= SNOOP_WT0_D; 
+    	end
+    end
+    SNOOP_WT0_D: begin
+    	/*
+    	 * 4th wait cycle after SNOOP_WT0_A
+    	 */
+    	if(ccif.dWEN[1]) begin
+    		next_state <= PRE_WB0;
+    	end else begin
     		next_state <= FETCH0; 
     	end
     end
@@ -89,6 +112,26 @@ always_comb begin : NEXT_STATE
     SNOOP_WT1_B: begin
     	/*
     	 * second wait cycle after SNOOP_WT0_B
+    	 */
+    	if(ccif.dWEN[0]) begin
+    		next_state <= PRE_WB1;
+    	end else begin
+    		next_state <= SNOOP_WT1_C; 
+    	end
+    end
+    SNOOP_WT1_C: begin
+    	/*
+    	 * 3rd wait cycle after SNOOP_WT0_B
+    	 */
+    	if(ccif.dWEN[0]) begin
+    		next_state <= PRE_WB1;
+    	end else begin
+    		next_state <= SNOOP_WT1_D; 
+    	end
+    end
+    SNOOP_WT1_D: begin
+    	/*
+    	 * 4th wait cycle after SNOOP_WT0_B
     	 */
     	if(ccif.dWEN[0]) begin
     		next_state <= PRE_WB1;
@@ -323,6 +366,7 @@ always_comb begin : OUTPUT
       ccif.ramREN = 1;
       ccif.ramstore = ccif.dstore[1];
       ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;
+      ccif.dload[1] = ccif.ramload;
     end
     FETCH0: begin
       ccif.ccsnoopaddr[0] = '0;
@@ -334,6 +378,8 @@ always_comb begin : OUTPUT
       ccif.ramREN = 1;
       ccif.ramstore = ccif.dstore[0];
       ccif.dwait[0] = (ccif.ramstate == ACCESS)? 0:1;
+      
+      ccif.dload[0] = ccif.ramload;
     end
     SNOOP_WT1_B: begin
     	ccif.ccwait[0] = 1;

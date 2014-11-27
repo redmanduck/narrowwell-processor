@@ -19,31 +19,32 @@ module forward_unit(forward_unit_if.fwu fw_if);
     end
   end // end of always_comb
 
-  // forwardB
-  always_comb begin
-    fw_if.forwardB = 0;
-    if (fw_if.memRegWr && (fw_if.mem_rd == fw_if.ex_rt) && (fw_if.ex_rt !=0)) begin
-      fw_if.forwardB = 1; // forward mem output to alu
-    end else if (fw_if.wbRegWr && (fw_if.wb_rd == fw_if.ex_rt) && (fw_if.ex_rt !=0)) begin
-      fw_if.forwardB = 2;// forward wb output to alu
-    end else begin
-      fw_if.forwardB = 0;
-    end
-  end // end of always_comb
-
+  
   // dealing with I type forwarding
   always_comb begin
     fw_if.forwardData = 0;
     // register value changed when written back to memory at mem stage
     if (fw_if.memWr && (fw_if.mem_rd == fw_if.wb_rd)) begin
       fw_if.forwardData = 1;
-
     // register value changed when written back to memory at wb stage
     end else if (fw_if.wbRegWr && (fw_if.wb_rd == fw_if.mem_rt) && (fw_if.mem_rt!=0)) begin
       fw_if.forwardData = 1;
 
     end else begin
       fw_if.forwardData = 0;
+    end
+  end // end of always_comb
+  
+  
+  // forwardB
+  always_comb begin
+    fw_if.forwardB = 0;
+    if (fw_if.memRegWr && (fw_if.mem_rd == fw_if.ex_rt) && (fw_if.ex_rt !=0)) begin
+      fw_if.forwardB = 1; // forward mem output to alu
+    end else if (fw_if.wbRegWr && (fw_if.wb_rd == fw_if.ex_rt) && (fw_if.ex_rt !=0)) begin
+      fw_if.forwardB = 2; // forward wb output to alu
+    end else begin
+      fw_if.forwardB = 0;
     end
   end // end of always_comb
 
