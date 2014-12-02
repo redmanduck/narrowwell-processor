@@ -17,7 +17,7 @@
   sw    $10,12($2)
   halt      # that's all
 
-  org   0x0F00
-  cfw   0x7337
-  cfw   0x2701
-  cfw   0x1337
+#  org   0x0F00
+#  cfw   0x7337
+#  cfw   0x2701
+#  cfw   0x1337

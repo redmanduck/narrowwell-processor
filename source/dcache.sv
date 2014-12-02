@@ -35,7 +35,7 @@ module dcache (
 
   typedef enum logic [5:0] {idle, fetch1, fetch2, fetch_done, wb1, wb2, reset, all_fetch_done, flush1, flush2, flush3, flush4, all_flushed, done_everything} StateType;
 
-
+  logic FLUSH_INDEX_INCREM_EN;
   StateType state, next_state;
 
   logic [25:0] rq_tag;
@@ -47,7 +47,6 @@ module dcache (
   word_t hitcount, hitcount_next;
   word_t hit_wait_count, hit_wait_count_next;
 
-  logic FLUSH_INDEX_INCREM_EN;
   logic which_word, write_dirty, write_valid, CACHE_WEN;
   word_t write_data;
   logic [25:0] write_tag;
@@ -76,10 +75,12 @@ module dcache (
 
   always_comb begin : next_state_logic_fsm
      //start from idle
+  	 FLUSH_INDEX_INCREM_EN = 0;
      next_state = idle;
      if(state == idle) begin
 
         if (dpif.halt) begin
+        	FLUSH_INDEX_INCREM_EN = 0;
             next_state = flush1;
         end else if(hit_out) begin //&& dpif.dmemREN
             //want to read and its in the table, so we just read it
@@ -93,7 +94,7 @@ module dcache (
         end
 
      end else if(state == flush1) begin
-        if(!ccif.dwait[CPUID]) begin
+        if(!ccif.dwait[CPUID] || !flushset[0].dirty) begin
           next_state = flush2;
         end else begin
            next_state = flush1;
@@ -101,13 +102,14 @@ module dcache (
 
      end else if(state == flush2) begin
 
-        if(!ccif.dwait[CPUID]) begin
+        if(!ccif.dwait[CPUID] || !flushset[0].dirty) begin
            next_state = flush3;
         end else begin
            next_state = flush2;
         end
-     end else if(state == flush3) begin
-        if(!ccif.dwait[CPUID]) begin
+     end else if(state == flush3 ) begin
+     	
+        if(!ccif.dwait[CPUID] || !flushset[1].dirty) begin
           next_state = flush4;
         end else begin
            next_state = flush3;
@@ -115,11 +117,12 @@ module dcache (
 
      end else if(state == flush4) begin
 
-        if(!ccif.dwait[CPUID]) begin
+        if(!ccif.dwait[CPUID] || !flushset[1].dirty) begin
            if(flush_index == total_set -1) begin //done flushing if we flushed 8 rows already
               next_state = all_flushed;
            end else begin
               next_state = flush1;
+              FLUSH_INDEX_INCREM_EN = 1;
            end
         end else begin
            next_state = flush4;
@@ -207,8 +210,6 @@ module dcache (
     hitcount_next = hitcount;
     hit_wait_count_next = hit_wait_count + 1;
     next_lru = LRU[rq_index];
-    FLUSH_INDEX_INCREM_EN = 0;
-
 
     casez(state)
       flush1: begin
@@ -219,7 +220,6 @@ module dcache (
           write_valid = 0;
           write_tag = 0;
           write_data = 0;
-          FLUSH_INDEX_INCREM_EN = 0;
           CACHE_WEN = 0;
           ccif.dREN[CPUID] = 0;
           ccif.dWEN[CPUID] = flushset[0].dirty;
@@ -239,7 +239,6 @@ module dcache (
           write_tag = 0;
           write_data = 0;
           CACHE_WEN = 0;
-          FLUSH_INDEX_INCREM_EN = 0;
           ccif.dREN[CPUID] = 0;
           ccif.dWEN[CPUID] = flushset[0].dirty;
           ccif.dstore[CPUID] = flushset[0].block[1]; //upper word
@@ -256,7 +255,6 @@ module dcache (
           write_valid = 0;
           write_tag = 0;
           write_data = 0;
-          FLUSH_INDEX_INCREM_EN = 0;
           CACHE_WEN = 0;
           ccif.dREN[CPUID] = 0;
           ccif.dWEN[CPUID] = flushset[1].dirty;
@@ -277,7 +275,6 @@ module dcache (
           write_tag = 0;
           write_data = 0;
           CACHE_WEN = 0;
-          FLUSH_INDEX_INCREM_EN = 1; //increment to the next index
           ccif.dREN[CPUID] = 0;
           ccif.dWEN[CPUID] = flushset[1].dirty;
           ccif.dstore[CPUID] = flushset[1].block[1]; //upper word
@@ -338,7 +335,6 @@ module dcache (
                     next_lru = !LRU[rq_index]; //on write hit, flip because we just wrote to the t[lru]
 
                     //$display("IDLE WRITING CACHE: LRU = %d, IDX = %d, data = %h", cur_lru, rq_index, dpif.dmemstore);
-                    FLUSH_INDEX_INCREM_EN = 0;
                     CACHE_WEN = 1;
 
                     which_word = rq_blockoffset;
@@ -348,7 +344,6 @@ module dcache (
                     write_data = dpif.dmemstore;
                 end else begin
                     CACHE_WEN = 0;
-                    FLUSH_INDEX_INCREM_EN = 0;
                 end
 
             end else begin
@@ -360,7 +355,6 @@ module dcache (
                 write_tag = 0;
                 write_data = 0;
 
-                FLUSH_INDEX_INCREM_EN  = 0;
             end
 
             // if(hit_out) begin
@@ -379,7 +373,6 @@ module dcache (
           write_valid = 0;
           write_data = ccif.dload[CPUID];
 
-          FLUSH_INDEX_INCREM_EN  = 0;
           ccif.daddr[CPUID] = {rq_tag, rq_index, 3'b000};
       end
       fetch2: begin
@@ -394,7 +387,6 @@ module dcache (
 
           ccif.daddr[CPUID] = {rq_tag, rq_index, 3'b100};
 
-          FLUSH_INDEX_INCREM_EN  = 0;
 
       end
       wb1: begin
@@ -406,7 +398,6 @@ module dcache (
           write_data = 0;
           ccif.daddr[CPUID] = {cway[cur_lru].dtable[rq_index].tag, rq_index, 3'b000};
 
-          FLUSH_INDEX_INCREM_EN  = 0;
           ccif.dWEN[CPUID] = 1;
           ccif.dREN[CPUID] = 0;
           ccif.dstore[CPUID] = cway[cur_lru].dtable[rq_index].block[0:0]; //cur_lru ---> (hit0 ? 1 : 0)
@@ -420,7 +411,6 @@ module dcache (
           write_tag = 0;
           write_data = 0;
 
-          FLUSH_INDEX_INCREM_EN  = 0;
           ccif.daddr[CPUID] = {cway[cur_lru].dtable[rq_index].tag, rq_index, 3'b100};
           ccif.dWEN[CPUID] = 1;
           ccif.dREN[CPUID] = 0;
@@ -435,7 +425,6 @@ module dcache (
         dpif.flushed = 0;
         hitcount_next = hitcount;
 		    ccif.daddr[CPUID] = '0;
-        FLUSH_INDEX_INCREM_EN  = 0;
         write_dirty = 0;
         write_valid = 0;
         which_word = 0;
@@ -445,6 +434,13 @@ module dcache (
     endcase
   end
 
+  always_ff @ (posedge CLK, negedge nRST) begin: flush_fsm
+  	if(!nRST) begin
+  		flush_index <= 0;
+  	end else if(FLUSH_INDEX_INCREM_EN) begin
+  		flush_index <= flush_index + 1;
+  	end
+  end
 
   always_ff @ (posedge CLK, negedge nRST) begin : cache_fsm
       if(!nRST) begin
@@ -464,14 +460,7 @@ module dcache (
       end
   end
 
-  always_ff @ (posedge CLK, negedge nRST) begin: flush_fsm
-    if(!nRST) begin
-        flush_index <= 0;
-    end else if(FLUSH_INDEX_INCREM_EN) begin
-        flush_index <= flush_index + 1;
-    end
-  end
-
+  
   always_ff @ (posedge CLK, negedge nRST) begin : ff_fsm
     if(!nRST) begin
         state <= idle;

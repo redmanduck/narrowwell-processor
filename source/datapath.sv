@@ -41,11 +41,12 @@ module datapath (
   pl_mem_wb LATCH_MEM_WB(CLK, nRST, mwb);
 
   //////////////////////////////// SHARED LEVEL /////////////////////////////
+  
+  register_file REGFILE_UNIT(CLK, nRST, rfif);
 
   forward_unit FWD_UNIT(fwif);
   hazard_unit HAZ_UNIT(hzif);
 
-  register_file REGFILE_UNIT(CLK, nRST, rfif);
 
   assign rfif.rsel1 = cuif.rs;
   assign rfif.rsel2 = cuif.rt;
@@ -63,25 +64,30 @@ module datapath (
 
   //////////////////////////////// HZ + FW /////////////////////////
 
+   
+   assign hzif.halt = idex.halt_out;
 
    assign hzif.ihit = dpif.ihit;
    assign hzif.dhit = dpif.dhit;
-   assign hzif.halt = idex.halt_out;
+   
    assign hzif.branch_taken = pcif.branch_flag;
    assign hzif.jump = (idex.PCSrc_out == 2 || idex.PCSrc_out == 1) ? 1 : 0; ///**
+   assign hzif.load = hzif.dmemREN &&  ((fwif.ex_rt == fwif.mem_rt) || (fwif.ex_rs == fwif.mem_rt)) ? 1:0;
+   
    assign hzif.dmemREN = xmem.dREN_out;
    assign hzif.dmemWEN = xmem.M_MemWrite_out;
-   assign hzif.load = hzif.dmemREN &&  ((fwif.ex_rt == fwif.mem_rt) || (fwif.ex_rs == fwif.mem_rt)) ? 1:0;
 
 
    assign fwif.ex_rs = idex.rs_out;
    assign fwif.ex_rt = idex.rt_out;
+   
    assign fwif.mem_rt = xmem.rt_out;
    assign fwif.mem_rd = wsel_tmp; //*(*)
-   assign fwif.wb_rd  = mwb.reg_instr_out; //=wsel
    assign fwif.memRegWr = xmem.WB_RegWrite_out;
-   assign fwif.wbRegWr  = mwb.WB_RegWrite_out; 
    assign fwif.memWr = xmem.M_MemWrite_out;
+
+   assign fwif.wb_rd  = mwb.reg_instr_out; 
+   assign fwif.wbRegWr  = mwb.WB_RegWrite_out; 
 
   //////////////////////////////// PIPELINE LATCHES /////////////////////////
 
@@ -130,22 +136,9 @@ module datapath (
   /////////////////////////////// DECODE STAGE /////////////////////////////
 
 
-  // assign idex.pcn_in = ifid.pcn_out;
-  // assign idex.rdat1_in = rfif.rdat1;
-  // assign idex.rdat2_in = rfif.rdat2;
-
-  // always_comb begin : Extender
-  //   casez(cuif.ExtOp) 
-  //     1: idex.immediate_in = {{16{cuif.immediate[15]}}, cuif.immediate};
-  //     default: idex.immediate_in = {16'b0, cuif.immediate};
-  //   endcase
-  // end
-
-
-  control_unit CONTROL_UNIT(cuif);
+   control_unit CONTROL_UNIT(cuif);
 
    assign cuif.instruction = ifid.instruction_out;
-
 
 
   //////////////////////////////// EXECUTE STAGE ///////////////////////////
@@ -188,8 +181,6 @@ module datapath (
    word_t op1_sync, op2_sync;
    word_t op1_mux, op2_mux;   
 
-   // op saver (in case of flush (on LW dependency))
-
    //SYNCHRONIZER 
    always_ff @ (posedge CLK, negedge nRST) begin
       if (!nRST) begin
@@ -203,9 +194,9 @@ module datapath (
       end
    end
 
-   //if op2 is fwded on LW, latch op1 and flush rest.
+   //if op2 is fwd on LW, latch op1 and flush rest.
    assign aluif.op1 = (load_sync && fwif.forwardB == 2) ? op1_sync : op1_mux;
-   //if op1 is fwded on LW, latch op2 and flush rest.
+   //if op1 is fwd on LW, latch op2 and flush rest.
    assign aluif.op2 = (load_sync && fwif.forwardA == 2) ? op2_sync : op2_mux;
       
    always_comb begin : Forward_ALU_A
@@ -239,27 +230,22 @@ module datapath (
    assign idex.pcn_in = ifid.pcn_out;
    assign idex.rdat1_in = rfif.rdat1;
    assign idex.rdat2_in = rfif.rdat2;
-   assign idex.immediate_in =  (cuif.ExtOp ? {{16{cuif.immediate[15]}}, cuif.immediate} : {16'b0, cuif.immediate});  //here
-   assign idex.immediate26_in = {{5{cuif.immediate26}}, cuif.immediate26};
-   //assign idex.immediate26_in = $signed(cuif.immediate26);
-   assign idex.EX_ALUOp_in = cuif.ALUctr;
-   assign idex.EX_ALUSrc_in = cuif.ALUSrc;
-   assign idex.shamt_in = cuif.shamt;
    assign idex.rd_in = cuif.rd;
    assign idex.rs_in = cuif.rs;
    assign idex.rt_in = cuif.rt;
+   assign idex.immediate_in =  (cuif.ExtOp ? {{16{cuif.immediate[15]}}, cuif.immediate} : {16'b0, cuif.immediate});  //here
+   assign idex.immediate26_in = {{5{cuif.immediate26}}, cuif.immediate26};
+   assign idex.EX_ALUOp_in = cuif.ALUctr;
+   assign idex.EX_ALUSrc_in = cuif.ALUSrc;
+   assign idex.shamt_in = cuif.shamt;
    assign idex.EX_RegDst_in = cuif.RegDst;
    assign idex.M_MemWrite_in = cuif.MemWr;
    assign idex.WB_MemToReg_in = cuif.MemToReg;
    assign idex.PCSrc_in = cuif.PCSrc;
    assign idex.WB_RegWrite_in = cuif.RegWr;
 
-   // assign idex.icuREN = cuif.icuREN;
-   // assign idex.M_MemWrite_in = cuif.MemWr;
    assign idex.dREN_in = cuif.dREN;
-
    assign idex.halt_in   = cuif.halt;
-   // assign idex.opcode_in = cuif.opcode;
    assign idex.beq_in = (cuif.opcode == BEQ) ? 2 : (cuif.opcode == BNE) ? 1 : 0;
 
    assign xmem.pcn_in = idex.pcn_out;
@@ -267,21 +253,22 @@ module datapath (
    assign xmem.alu_output_in = aluif.res;
    assign xmem.rd_in = idex.rd_out;
    assign xmem.rt_in = idex.rt_out;
-   assign xmem.EX_RegDst_in = idex.EX_RegDst_out; //TODO: xmem iface
-   // assign xmem.M_MemWrite_in = idex.M_MemWrite_out;
+   assign xmem.EX_RegDst_in = idex.EX_RegDst_out; 
    assign xmem.WB_MemToReg_in = idex.WB_MemToReg_out;
    assign xmem.PCSrc_in = idex.PCSrc_out;
    assign xmem.WB_RegWrite_in = idex.WB_RegWrite_out;
    assign xmem.M_MemWrite_in = idex.M_MemWrite_out;
    assign xmem.dREN_in = idex.dREN_out;
    assign xmem.halt_in = idex.halt_out;
-   // assign xmem.opcode = idex.opcode;
-   // assign xmem.icuREN = idex.icuREN;
 
    assign mwb.pcn_in = xmem.pcn_out;
    assign mwb.alu_output_in = xmem.alu_output_out;
    assign mwb.dmemload_in = dpif.dmemload;
    assign mwb.WB_RegWrite_in = xmem.WB_RegWrite_out;
+   assign mwb.reg_instr_in = wsel_tmp;
+   assign mwb.WB_MemToReg_in = xmem.WB_MemToReg_out;
+   assign mwb.dREN_in = xmem.dREN_out;
+   assign mwb.halt_in = xmem.halt_out;
 
    always_comb begin : reg_instr_out
       casez (xmem.EX_RegDst_out)
@@ -291,14 +278,7 @@ module datapath (
         default: wsel_tmp = xmem.rd_out;
       endcase
    end
-   assign mwb.reg_instr_in = wsel_tmp;
-
-   assign mwb.WB_MemToReg_in = xmem.WB_MemToReg_out;
-   // assign mwb.PCSrc_in = xmem.PCSrc_out; //TODO: iface
-   assign mwb.dREN_in = xmem.dREN_out;
-   // assign mwb.icuREN = xmem.icuREN; //?????
-   assign mwb.halt_in = xmem.halt_out;
-   // assign mwb.opcode = xmem.opcode;
+   
 
 
 endmodule
