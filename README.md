@@ -1,4 +1,3 @@
-narrowwell-processor
+Narrowwell microarchitecture
 ====================
-
-Dual Core NWP
+MIPS Dual Core Processor
