@@ -197,6 +197,10 @@ always_comb begin : NEXT_STATE
   endcase
 end
 
+
+logic instr_core;
+assign instr_core = ccif.iREN[1] ? 1 : 0;
+
 always_comb begin : OUTPUT
  ccif.ccsnoopaddr[0] = ccif.ccsnoopaddr[0];
  ccif.ccsnoopaddr[1] = ccif.ccsnoopaddr[1];
@@ -235,22 +239,14 @@ always_comb begin : OUTPUT
          ccif.ramREN = 0;
          ccif.dwait[1] = (ccif.ramstate == ACCESS)? 0:1;
          ccif.dwait[0] = 1;
-      end else if(ccif.iREN[0]) begin  //prioritize core 0
-         //serve instruction from CORE 0
-         ccif.ramaddr = ccif.iaddr[0];  
-         ccif.iload[0] = ccif.ramload; 
+     
+      end else if(ccif.iREN[instr_core]) begin  
+         ccif.ramaddr = ccif.iaddr[instr_core];  
+         ccif.iload[instr_core] = ccif.ramload; 
          ccif.ramWEN = 0;
          ccif.ramREN = 1;
-         ccif.iwait[0] = (ccif.ramstate == ACCESS)? 0:1;
-         ccif.iwait[1] = 1;
-      end else if(ccif.iREN[1]) begin
-         //serve instruction from CORE 1
-         ccif.ramaddr = ccif.iaddr[1];
-         ccif.iload[1] = ccif.ramload;
-         ccif.ramWEN = 0;
-         ccif.ramREN = 1;
-         ccif.iwait[0] = 1;
-         ccif.iwait[1] = (ccif.ramstate == ACCESS)? 0:1;
+         ccif.iwait[instr_core] = (ccif.ramstate == ACCESS)? 0:1;
+         ccif.iwait[!instr_core] = 1;
       end
       //%%%%%%%%%%% end of non-coherence %%%%%%%%%%%%%%%
       
