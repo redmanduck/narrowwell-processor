@@ -177,7 +177,7 @@ module dcache (
       LRU <= '0;
     end else if(hit_out) begin
       LRU[rq_index] <= next_lru;
-      $display("updating LRU at index %d to %d", rq_index, hit0);
+      //$display("updating LRU at index %d to %d", rq_index, hit0);
     end
   end
 
@@ -288,7 +288,7 @@ module dcache (
       end
 
       all_flushed: begin
-          $display("ALL DONE with hitcount %d", hitcount);
+          //$display("ALL DONE with hitcount %d", hitcount);
           ccif.dREN[CPUID] = 0;
           ccif.dWEN[CPUID] = 1;
           ccif.dstore[CPUID] = hitcount;
@@ -337,7 +337,7 @@ module dcache (
 
                     next_lru = !LRU[rq_index]; //on write hit, flip because we just wrote to the t[lru]
 
-                    $display("IDLE WRITING CACHE: LRU = %d, IDX = %d, data = %h", cur_lru, rq_index, dpif.dmemstore);
+                    //$display("IDLE WRITING CACHE: LRU = %d, IDX = %d, data = %h", cur_lru, rq_index, dpif.dmemstore);
                     FLUSH_INDEX_INCREM_EN = 0;
                     CACHE_WEN = 1;
 

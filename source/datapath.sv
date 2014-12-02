@@ -68,7 +68,7 @@ module datapath (
    assign hzif.dhit = dpif.dhit;
    assign hzif.halt = idex.halt_out;
    assign hzif.branch_taken = pcif.branch_flag;
-   assign hzif.jump = (idex.PCSrc_out == 2 ) ? 1 : 0; ///**
+   assign hzif.jump = (idex.PCSrc_out == 2 || idex.PCSrc_out == 1) ? 1 : 0; ///**
    assign hzif.dmemREN = xmem.dREN_out;
    assign hzif.dmemWEN = xmem.M_MemWrite_out;
    assign hzif.load = hzif.dmemREN &&  ((fwif.ex_rt == fwif.mem_rt) || (fwif.ex_rs == fwif.mem_rt)) ? 1:0;

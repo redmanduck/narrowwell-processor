@@ -15,18 +15,17 @@ add wave -noupdate -expand -group PCIF /system_tb/DUT/CPU/DP/pcif/branch_flag
 add wave -noupdate -expand -group PCIF /system_tb/DUT/CPU/DP/pcif/imemaddr
 add wave -noupdate -expand -group PCIF /system_tb/DUT/CPU/DP/pcif/pc_plus_4
 add wave -noupdate -expand -group PCIF /system_tb/DUT/CPU/DP/pcif/branch_addr
-add wave -noupdate -expand -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/CLK
-add wave -noupdate -expand -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/nRST
-add wave -noupdate -expand -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/CACHE_WEN
-add wave -noupdate -expand -group ICACHE -expand /system_tb/DUT/CPU/CM/ICACHE/dtable
-add wave -noupdate -expand -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/state
-add wave -noupdate -expand -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/next_state
-add wave -noupdate -expand -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/iload_hold
-add wave -noupdate -expand -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/rq_tag
-add wave -noupdate -expand -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/rq_index
-add wave -noupdate -expand -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/x_data
-add wave -noupdate -expand -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/x_valid
-add wave -noupdate -expand -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/x_tag
+add wave -noupdate -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/CLK
+add wave -noupdate -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/nRST
+add wave -noupdate -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/CACHE_WEN
+add wave -noupdate -group ICACHE -expand /system_tb/DUT/CPU/CM/ICACHE/dtable
+add wave -noupdate -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/state
+add wave -noupdate -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/next_state
+add wave -noupdate -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/rq_tag
+add wave -noupdate -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/rq_index
+add wave -noupdate -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/x_data
+add wave -noupdate -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/x_valid
+add wave -noupdate -group ICACHE /system_tb/DUT/CPU/CM/ICACHE/x_tag
 add wave -noupdate -group HZF /system_tb/DUT/CPU/DP/hzif/stall_ifid
 add wave -noupdate -group HZF /system_tb/DUT/CPU/DP/hzif/stall_xmem
 add wave -noupdate -group HZF /system_tb/DUT/CPU/DP/hzif/stall_idex
@@ -80,42 +79,41 @@ add wave -noupdate -group IDEX /system_tb/DUT/CPU/DP/LATCH_ID_EX/halt
 add wave -noupdate -group IDEX /system_tb/DUT/CPU/DP/LATCH_ID_EX/pcn
 add wave -noupdate -group IDEX /system_tb/DUT/CPU/DP/LATCH_ID_EX/bubble
 add wave -noupdate -group IDEX /system_tb/DUT/CPU/DP/LATCH_ID_EX/dREN
-add wave -noupdate -group ALU /system_tb/DUT/CPU/DP/ALU/aluif/opcode
-add wave -noupdate -group ALU /system_tb/DUT/CPU/DP/ALU/aluif/op1
-add wave -noupdate -group ALU /system_tb/DUT/CPU/DP/ALU/aluif/op2
-add wave -noupdate -group ALU /system_tb/DUT/CPU/DP/ALU/aluif/res
-add wave -noupdate -group ALU /system_tb/DUT/CPU/DP/ALU/aluif/flag_n
-add wave -noupdate -group ALU /system_tb/DUT/CPU/DP/ALU/aluif/flag_v
-add wave -noupdate -group ALU /system_tb/DUT/CPU/DP/ALU/aluif/flag_z
-add wave -noupdate -group ALU /system_tb/DUT/CPU/DP/ALU/aluif/shamt
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/halt
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/iREN
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/dWEN
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/dREN
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/instruction
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/funct
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/opcode
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/rs
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/rt
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/rd
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/shamt
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/immediate
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/immediate26
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/alu_zf
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/MemToReg
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/RegWr
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/MemWr
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/ExtOp
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/ALUctr
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/RegDst
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/PCSrc
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/ALUSrc
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/MemRead
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/ALUSrc2
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/Jump
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/BranchNEQ
-add wave -noupdate -group CONTROL /system_tb/DUT/CPU/DP/cuif/Branch
-add wave -noupdate /system_tb/DUT/CPU/DP/REGFILE_UNIT/regs
+add wave -noupdate -expand -group ALU /system_tb/DUT/CPU/DP/ALU/a_if/opcode
+add wave -noupdate -expand -group ALU /system_tb/DUT/CPU/DP/ALU/a_if/op1
+add wave -noupdate -expand -group ALU /system_tb/DUT/CPU/DP/ALU/a_if/op2
+add wave -noupdate -expand -group ALU /system_tb/DUT/CPU/DP/ALU/a_if/res
+add wave -noupdate -expand -group ALU /system_tb/DUT/CPU/DP/ALU/a_if/flag_n
+add wave -noupdate -expand -group ALU /system_tb/DUT/CPU/DP/ALU/a_if/flag_v
+add wave -noupdate -expand -group ALU /system_tb/DUT/CPU/DP/ALU/a_if/flag_z
+add wave -noupdate -expand -group ALU /system_tb/DUT/CPU/DP/ALU/a_if/shamt
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/halt
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/iREN
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/dWEN
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/dREN
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/instruction
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/funct
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/opcode
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/rs
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/rt
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/rd
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/shamt
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/immediate
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/immediate26
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/MemToReg
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/RegWr
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/MemWr
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/ExtOp
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/ALUctr
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/RegDst
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/PCSrc
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/ALUSrc
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/MemRead
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/ALUSrc2
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/Jump
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/BranchNEQ
+add wave -noupdate -expand -group CONTROL /system_tb/DUT/CPU/DP/cuif/Branch
+add wave -noupdate -expand /system_tb/DUT/CPU/DP/REGFILE_UNIT/regs
 add wave -noupdate -group XMEM /system_tb/DUT/CPU/DP/LATCH_EX_MEM/CLK
 add wave -noupdate -group XMEM /system_tb/DUT/CPU/DP/LATCH_EX_MEM/nRST
 add wave -noupdate -group XMEM /system_tb/DUT/CPU/DP/LATCH_EX_MEM/WB_MemToReg
@@ -236,7 +234,7 @@ add wave -noupdate -expand -group ccif /system_tb/DUT/CPU/CC/ccif/ramaddr
 add wave -noupdate -expand -group ccif /system_tb/DUT/CPU/CC/ccif/ramstore
 add wave -noupdate -expand -group ccif /system_tb/DUT/CPU/CC/ccif/ramload
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {838311 ps} 0}
+WaveRestoreCursors {{Cursor 1} {7280000 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 150
 configure wave -valuecolwidth 100
@@ -252,4 +250,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ps} {2 us}
+WaveRestoreZoom {6818329 ps} {10167457 ps}

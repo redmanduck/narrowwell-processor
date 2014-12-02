@@ -103,7 +103,7 @@ module pl_id_ex(
         M_Jump <= '0;
         BranchNEQ <= '0;
       end else if(idex.WEN == 1 && !idex.flush) begin
-         $display("IDEX.Branch = %d", M_Branch);
+         //$display("IDEX.Branch = %d", M_Branch);
          dREN <= idex.dREN_in;
          WB_MemToReg <= idex.WB_MemToReg_in;
          WB_RegWrite <= idex.WB_RegWrite_in;
