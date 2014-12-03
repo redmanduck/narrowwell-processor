@@ -24,9 +24,17 @@ module dcache (
 		CacheRow [total_set - 1 : 0] dtable;
 	} CacheWay;
 
+
+	typedef struct packed{
+		word_t addr;
+		logic valid;
+	} LinkedReg;
+
 	logic [total_set - 1 : 0] LRU;
 
 	CacheWay [1:0] cway;
+	LinkedReg linkr;
+	LinkedReg next_linkr;
 
 	typedef enum logic [4:0] {
 		IDLE, FETCH1, FETCH2, FETCH_FINISHED, 
@@ -44,9 +52,6 @@ module dcache (
 	logic hit_out, hit0, hit1, snoop_hit, snoop_hit0, snoop_hit1, snoop_way;
 	logic tag_match0, tag_match1;
 	logic cur_lru, rq_blockoffset, snoop_offset;
-
-	word_t hitcount, hitcount_next;
-	word_t hit_wait_count, hit_wait_count_next;
 
 	logic FLUSH_INDEX_INCREM_EN;
 	logic CACHE_CLEAR;
@@ -295,10 +300,22 @@ module dcache (
 		end
 	end
 
+	always_ff @ (posedge CLK, negedge nRST) begin
+		if(!nRST) begin
+			linkr <= '0;
+		end else if(hit_out) begin
+			linkr <= next_linkr;
+		end
+	end
+
 	//assign dpif.dmemload = (hit0 ? cway[0].dtable[rq_index].block[rq_blockoffset] : (hit1 ? cway[1].dtable[rq_index].block[rq_blockoffset] : 32'hbad1bad2 ));
 
-	always_comb begin: Eric
-		if(hit0 == 1) begin
+	logic SC_SUCCESS;
+	always_comb begin: data_return_to_core
+		if(dpif.datomic && dpif.dmemWEN) begin
+			//Store conditonal
+			dpif.dmemload = {31'h0, SC_SUCCESS}; 
+		end if(hit0 == 1) begin
 			//If there is a hit on way 0
 			if(rq_blockoffset == 0) begin //and for block offset 0
 				dpif.dmemload = cway[0].dtable[rq_index].block[0:0]; //we load that
@@ -334,11 +351,9 @@ module dcache (
 		// write_tag = 0;
 		// write_data = 0;
 		// dpif.flushed = 0;
-		hitcount_next = hitcount;
-		hit_wait_count_next = hit_wait_count + 1;
 		next_lru = LRU[rq_index];
 		FLUSH_INDEX_INCREM_EN = 0;
-  
+  	    SC_SUCCESS = 0;
 		ccif.ccwrite[CPUID] = 0; 
 		ccif.cctrans[CPUID] = 0; //assert cctrans when there is an MSI upgrade
     
@@ -496,29 +511,44 @@ module dcache (
 			end
 			IDLE: begin
 				/*
-				 * 
-				 * 
 				 * ############### IDLE ###########
 				 */
 				ccif.dREN[CPUID] = 0;
 				ccif.dWEN[CPUID] = 0;
-				hit_wait_count_next = 0;
+
+				if(dpif.datomic) begin
+					if(dpif.dmemREN) begin : LL
+						//Load Link
+						next_linkr.addr = dpif.dmemaddr;
+						next_linkr.valid = 1;
+					end else if (dpif.dmemWEN) begin : SC
+						//Store conditional
+						if(linkr.valid && (dpif.dmemaddr == linkr.addr)) begin
+							SC_SUCCESS = 1;
+							next_linkr = '0; //clear link
+						end else begin
+							SC_SUCCESS = 0;
+							next_linkr = '0; //clear link
+						end
+					end
+				end 
 
 				if(hit_out) begin
 					next_lru = hit0;
 
-					if(hit_wait_count < 1) begin
-						hitcount_next = hitcount + 1;
-					end
-
 					if(dpif.dmemWEN == 1'b1) begin
+						if(dpif.dmemaddr == linkr.addr) begin
+							//invalidate lock if there is a modification to
+							//that address by a non-atomic operation
+							next_linkr = '0;
+						end
 						//while sitting in cache
 						//and there is a hit
 						//and there is a write
 						next_lru = !LRU[rq_index]; //?
                     
 						FLUSH_INDEX_INCREM_EN = 0;
-						CACHE_WEN = 1;
+						
 
 						which_word = rq_blockoffset;
 						write_dirty = 1;
@@ -526,18 +556,25 @@ module dcache (
 						write_tag = rq_tag;
 						write_data = dpif.dmemstore;
                     
-                    
-						ccif.ccwrite[CPUID] = 1; 
-               
-						//if upgrade from S -> M , cctrans
-						if(cway[!hit0].dtable[rq_index].valid && !cway[!hit0].dtable[rq_index].dirty) begin
-							ccif.cctrans[CPUID] = 1; 
-						end else if(!cway[!hit0].dtable[rq_index].valid) begin
-							//if upgrade from I -> M
-							ccif.cctrans[CPUID] = 1;
-						end else begin
-							//all other cases
+						if(dpif.datomic && !linkr.valid) begin
+							//SC lock was broken
+							//dont store
+							CACHE_WEN = 0;
+							ccif.ccwrite[CPUID] = 0;
 							ccif.cctrans[CPUID] = 0; 
+						end else begin
+							ccif.ccwrite[CPUID] = 1; 
+	               			CACHE_WEN = 1;
+							//if upgrade from S -> M , cctrans
+							if(cway[!hit0].dtable[rq_index].valid && !cway[!hit0].dtable[rq_index].dirty) begin
+								ccif.cctrans[CPUID] = 1; 
+							end else if(!cway[!hit0].dtable[rq_index].valid) begin
+								//if upgrade from I -> M
+								ccif.cctrans[CPUID] = 1;
+							end else begin
+								//all other cases
+								ccif.cctrans[CPUID] = 0; 
+							end
 						end
 					end
 
@@ -552,6 +589,9 @@ module dcache (
 					ccif.cctrans[CPUID] = 0;
 					FLUSH_INDEX_INCREM_EN  = 0;
 				end
+
+
+			
 
 				// if(hit_out) begin
 				//     LRU[rq_index] = !LRU[rq_index];
@@ -697,7 +737,6 @@ module dcache (
 				ccif.dREN[CPUID] = 0;
 				ccif.dWEN[CPUID] = 0;
 				dpif.flushed = 0;
-				hitcount_next = hitcount;
 
 				FLUSH_INDEX_INCREM_EN  = 0;
 				write_dirty = 0;
@@ -745,12 +784,8 @@ module dcache (
 	always_ff @ (posedge CLK, negedge nRST) begin : ff_fsm
 		if(!nRST) begin
 			state <= IDLE;
-			hitcount <= 0;
-			hit_wait_count <= 0;
 		end else begin //don't transition on ccwait - pause 
 			state <= next_state;
-			hitcount <= hitcount_next;
-			hit_wait_count <= hit_wait_count_next;
 		end
 	end
 

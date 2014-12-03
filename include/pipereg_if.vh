@@ -33,16 +33,16 @@ interface pipereg_id_ex;
    logic [2:0] PCSrc_out, PCSrc_in;
    logic [1:0] beq_in, beq_out;
    logic dREN_out, dREN_in;
-
+   logic datomic_in, datomic_out;
   modport idex(
      input WEN, rs_in, pcn_in, flush, WB_MemToReg_in, immediate26_in,immediate_in, M_Jump_in, BranchNEQ_in,
-     shamt_in, EX_ALUSrc2_in, WB_RegWrite_in, M_Branch_in, M_MemRead_in, bubble_in,PCSrc_in, 
+     shamt_in, EX_ALUSrc2_in, WB_RegWrite_in, M_Branch_in, M_MemRead_in, bubble_in,PCSrc_in, datomic_in,
      M_MemWrite_in, EX_RegDst_in, EX_ALUOp_in, EX_ALUSrc_in, next_address_in, beq_in,
      rdat1_in, rdat2_in, sign_ext32_in, rt_in, rd_in, halt_in,dREN_in,
      output WB_MemToReg_out, pcn_out, rs_out, WB_RegWrite_out, immediate26_out,immediate_out, BranchNEQ_out,
      shamt_out, EX_ALUSrc2_out, M_Branch_out, M_MemRead_out, M_MemWrite_out, M_Jump_out, PCSrc_out,
      EX_RegDst_out, EX_ALUOp_out, EX_ALUSrc_out, next_address_out, rdat1_out, bubble_out,
-     rdat2_out, sign_ext32_out, rt_out, rd_out, halt_out, beq_out, dREN_out
+     rdat2_out, sign_ext32_out, rt_out, rd_out, halt_out, beq_out, dREN_out,datomic_out
   );
 endinterface
 
@@ -86,12 +86,13 @@ interface pipereg_ex_mem;
    logic [4:0] rt_in, rt_out, rd_in, rd_out;
 
    word_t dmemstore_out, dmemstore_in;
+   logic datomic_in, datomic_out;
 
   modport xmem (
-     input WEN, flush, pcn_in, WB_MemToReg_in, WB_RegWrite_in, M_Branch_in,dREN_in, PCSrc_in,
+     input WEN, flush, pcn_in, WB_MemToReg_in, WB_RegWrite_in, M_Branch_in,dREN_in, PCSrc_in, datomic_in,
      M_MemRead_in, M_MemWrite_in, alu_zero_in, alu_output_in, halt_in, rt_in, dmemstore_in, EX_RegDst_in,
      adder_result_in, regfile_rdat2_in, reg_instr_in, rd_in,
-     output WB_MemToReg_out, pcn_out, WB_RegWrite_out, M_Branch_out, rd_out,
+     output WB_MemToReg_out, pcn_out, WB_RegWrite_out, M_Branch_out, rd_out, datomic_out,
      M_MemRead_out, M_MemWrite_out, alu_zero_out, alu_output_out,dREN_out, rt_out, EX_RegDst_out,
      adder_result_out, regfile_rdat2_out, reg_instr_out, halt_out, dmemstore_out, PCSrc_out
   );

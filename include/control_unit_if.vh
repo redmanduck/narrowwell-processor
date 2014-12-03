@@ -17,6 +17,7 @@ interface control_unit_if;
   logic [4:0] rs, rt, rd, shamt;
   logic [15:0] immediate;
   logic [25:0] immediate26;
+  logic datomic;
   //request control signal
    logic alu_zf; //zero flag from alu
   //other standard magical signals
@@ -34,7 +35,7 @@ interface control_unit_if;
   logic BranchNEQ, Branch;
   modport control (
     input instruction, alu_zf,
-    output Jump, Branch,  BranchNEQ, opcode, funct, rs, rd, rt, shamt, immediate, immediate26, iREN, dWEN, dREN, MemToReg, RegWr,MemWr, ExtOp, ALUctr, RegDst, PCSrc, ALUSrc, ALUSrc2, MemRead, halt
+    output Jump, Branch,datomic,  BranchNEQ, opcode, funct, rs, rd, rt, shamt, immediate, immediate26, iREN, dWEN, dREN, MemToReg, RegWr,MemWr, ExtOp, ALUctr, RegDst, PCSrc, ALUSrc, ALUSrc2, MemRead, halt
   );
 endinterface
 

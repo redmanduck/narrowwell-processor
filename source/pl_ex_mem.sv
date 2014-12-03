@@ -23,6 +23,7 @@ module pl_ex_mem(
    logic dREN;
    word_t dmemstore;
    logic [4:0] rt, rd;
+   logic datomic;
    logic [1:0] EX_RegDst;
    logic [2:0] PCSrc;
 
@@ -44,6 +45,7 @@ module pl_ex_mem(
    assign xmem.rd_out = rd;
    assign xmem.EX_RegDst_out = EX_RegDst;
    assign xmem.PCSrc_out = PCSrc;
+   assign xmem.datomic_out = datomic;
 
    always_ff @(posedge CLK, negedge nRST) begin
      if (!nRST) begin //TODO: or flush
@@ -53,6 +55,7 @@ module pl_ex_mem(
         halt <= '0;
         dmemstore <= '0;
         M_Branch <= '0;
+        datomic <= '0;
         M_MemRead <= '0;
         dREN <= '0;
         PCSrc <= '0;
@@ -74,6 +77,7 @@ module pl_ex_mem(
         EX_RegDst <= '0;
         PCSrc <= '0;
         dmemstore <= '0;
+        datomic <= '0;
         halt <= '0;
         dREN <= '0;
         rt <= '0; rd <= '0;
@@ -85,6 +89,7 @@ module pl_ex_mem(
         PCSrc <= xmem.PCSrc_in;
         WB_RegWrite <= xmem.WB_RegWrite_in;
         M_Branch <= xmem.M_Branch_in;
+        datomic <= xmem.datomic_in;
         M_MemRead <= xmem.M_MemRead_in;
         dmemstore <= xmem.dmemstore_in;
         M_MemWrite <= xmem.M_MemWrite_in;

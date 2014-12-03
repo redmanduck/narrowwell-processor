@@ -292,5 +292,8 @@ module datapath (
    assign mwb.dREN_in = xmem.dREN_out;
    assign mwb.halt_in = xmem.halt_out;
 
-
+   //TODO: pass datomic over to the MEMACCESS stage, and pass that to dpif
+   assign idex.datomic_in = cuif.datomic;
+   assign xmem.datomic_in = idex.datomic_out;
+   assign dpif.datomic = xmem.datomic_out;
 endmodule

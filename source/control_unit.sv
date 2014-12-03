@@ -97,7 +97,8 @@ module control_unit (
     end
   end
 
-  
+  assign cuif.datomic = (cuif.opcode == LL || cuif.opcode == SC);   
+
    always_comb begin : ALU_SRC
       casez (cuif.opcode)
           RTYPE: cuif.ALUSrc = 0;

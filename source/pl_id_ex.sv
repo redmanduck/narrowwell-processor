@@ -32,6 +32,9 @@ module pl_id_ex(
    word_t pcn;
    logic bubble;
    logic dREN;
+   logic datomic;
+
+   assign idex.datomic_out = datomic;
 
    assign idex.beq_out = beq;
    assign idex.M_Jump_out = M_Jump;
@@ -86,6 +89,7 @@ module pl_id_ex(
          halt <= '0;
          rt <= '0;
          rd <= '0;
+         datomic <= '0;
          rs <= '0;
          BranchNEQ <= '0;
          shamt <= '0;
@@ -94,6 +98,7 @@ module pl_id_ex(
         bubble <= '0;
         WB_RegWrite <= '0;
         M_Branch <= '0;
+        datomic <= '0;
         pcn <= '0;
         beq <= '0;
         PCSrc <= 0;
@@ -131,6 +136,7 @@ module pl_id_ex(
          immediate26 <= idex.immediate26_in;
          immediate <= idex.immediate_in;
          PCSrc <= idex.PCSrc_in;
+         datomic <= idex.datomic_in;
       end
   end
 
