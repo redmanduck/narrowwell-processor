@@ -29,6 +29,7 @@ assign busRdX[1] = ccif.cctrans[1] && ccif.ccwrite[1];
 assign busRd[1] = ccif.cctrans[1] && !ccif.ccwrite[1];
 
 always_comb begin : NEXT_STATE
+  next_state <= IDLE;
   casez(state) 
     IDLE: begin
       if(ccif.flushing[0] || ccif.flushing[1]) begin
@@ -194,6 +195,9 @@ always_comb begin : NEXT_STATE
         next_state <= WB1;
       end
     end
+    default: begin
+      next_state <= IDLE;
+    end
   endcase
 end
 
@@ -202,14 +206,13 @@ logic instr_core;
 assign instr_core = ccif.iREN[1] ? 1 : 0;
 
 always_comb begin : OUTPUT
- ccif.ccsnoopaddr[0] = ccif.ccsnoopaddr[0];
- ccif.ccsnoopaddr[1] = ccif.ccsnoopaddr[1];
+ ccif.ccsnoopaddr = '0; //ccsnoopaddr[0] =? ; ccsnoopaddr[1] = ccsnoopaddr[1]
  ccif.ccwait = '0;
  ccif.ccinv = '0;
  ccif.ramstore = '0;
  ccif.ramaddr = ccif.iaddr[0]; //prioritize Core 0, icache
- ccif.iload[0] = ccif.iload[0]; 
- ccif.iload[1] = ccif.iload[1];
+ ccif.iload = '0;// ccif.iload[0]; 
+// ccif.iload[1] = ccif.iload[1];
  ccif.dload = '0;
  ccif.ramWEN = '0;
  ccif.ramREN = '0; 

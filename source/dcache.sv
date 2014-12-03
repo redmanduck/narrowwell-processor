@@ -350,20 +350,33 @@ module dcache (
 		// write_valid = 0;
 		// write_tag = 0;
 		// write_data = 0;
-		// dpif.flushed = 0;
+		dpif.flushed = 0;
 		next_lru = LRU[rq_index];
 		FLUSH_INDEX_INCREM_EN = 0;
   	    SC_SUCCESS = 0;
 		ccif.ccwrite[CPUID] = 0; 
 		ccif.cctrans[CPUID] = 0; //assert cctrans when there is an MSI upgrade
-    
+
+		/* Experimental */
+    //	ccif.dstore[CPUID] = '0;  
+   // 	ccif.daddr[CPUID] = '0;
+
+    	next_linkr = linkr;  
+
+    	/* End Experiment */
+
 		casez(state)
 			CC_WB1: begin
 				/*
 				 * ##### CACHE writeback 1 #######
 				 */
 				//the block must've been in M state
-      	
+      			which_word = 0;
+				write_dirty = 0;
+				write_valid = 0;
+				write_tag = 0;
+				write_data = 0;
+
 				ccif.dREN[CPUID] = 0;
 				ccif.dWEN[CPUID] = 1;
 				ccif.daddr[CPUID] = { snoop_tag, snoop_index, 3'b000};
@@ -491,16 +504,22 @@ module dcache (
 				write_tag = 0;
 				CACHE_CLEAR = 1;
 				CACHE_WEN = 0;
-				write_data = 0;      
+				write_data = 0;    
+				ccif.dREN[CPUID] = 0;
+				ccif.dWEN[CPUID] = 0;
+		    	ccif.dstore[CPUID] = '0;  
+		    	ccif.daddr[CPUID] = '0;
 			end
 			CC_INVALIDATE: begin
 				/*
 				 * ##### (CC) CC_INVALIDATE #######
 				 */
 				//set the valid bit false for the cache block being snooped
-      	
+      			ccif.dstore[CPUID] = '0;  
+    			ccif.daddr[CPUID] = '0;
 				ccif.cctrans[CPUID] = 0;  //we dont need to tell other cache anything
-      	
+      			ccif.dREN[CPUID] = 0;
+				ccif.dWEN[CPUID] = 0;
 				dpif.flushed = 0;
 				CACHE_WEN = 1;
 				which_word = snoop_offset;
@@ -508,6 +527,12 @@ module dcache (
 				write_valid = 0;
 				write_tag = snoop_tag;
 				write_data = 'hFBFBFBFB;
+
+				if(dpif.dmemaddr == linkr.addr) begin
+					next_linkr = '0; //clear link
+				end
+					
+
 			end
 			IDLE: begin
 				/*
@@ -515,7 +540,14 @@ module dcache (
 				 */
 				ccif.dREN[CPUID] = 0;
 				ccif.dWEN[CPUID] = 0;
+				ccif.daddr[CPUID] = '0;
+      			ccif.dstore[CPUID] = '0;  
 
+				which_word = 0;
+				write_dirty = 0;
+				write_valid = 0;
+				write_tag = 0;
+				write_data = 0;
 				if(dpif.datomic) begin
 					if(dpif.dmemREN) begin : LL
 						//Load Link
@@ -537,11 +569,11 @@ module dcache (
 					next_lru = hit0;
 
 					if(dpif.dmemWEN == 1'b1) begin
-						if(dpif.dmemaddr == linkr.addr) begin
+						/*if(dpif.dmemaddr == linkr.addr) begin
 							//invalidate lock if there is a modification to
 							//that address by a non-atomic operation
 							next_linkr = '0;
-						end
+						end*/
 						//while sitting in cache
 						//and there is a hit
 						//and there is a write
@@ -579,7 +611,8 @@ module dcache (
 					end
 
 				end else begin
-
+					ccif.dREN[CPUID] = 0;
+					ccif.dWEN[CPUID] = 0;
 					CACHE_WEN = 0;
 					which_word = 0;
 					write_dirty = 0;
@@ -605,6 +638,8 @@ module dcache (
 				 */
 				ccif.dREN[CPUID] = 1;
 				ccif.dWEN[CPUID] = 0;
+      			ccif.dstore[CPUID] = '0;  
+
 				CACHE_WEN = 1;
 				which_word = 0;
 				write_dirty = 0;
@@ -620,7 +655,7 @@ module dcache (
 				//send out cctrans because we are transitioning from I to S
           
 				//TODO: not sure about cur_lru used here?? Why do we need cctrans when going from I to S , who cares
-		   	if(!cway[cur_lru].dtable[rq_index].valid) begin 
+		   		if(!cway[cur_lru].dtable[rq_index].valid) begin 
 					ccif.cctrans[CPUID] = 1; 
 				end else begin
 					ccif.cctrans[CPUID] = 0;
@@ -632,6 +667,8 @@ module dcache (
 				 * ############### FETCH 2 ###########
 				 * Fetch data from memory for word 1- because we missed or someshit
 				 */
+      			ccif.dstore[CPUID] = '0;  
+
 				ccif.dREN[CPUID] = 1;
 				ccif.dWEN[CPUID] = 0;
 				CACHE_WEN = 1;
@@ -654,7 +691,7 @@ module dcache (
 				end
           
 				//TODO: not sure about cur_lru used here??
-			  if(!cway[cur_lru].dtable[rq_index].valid) begin 
+			    if(!cway[cur_lru].dtable[rq_index].valid) begin 
 					ccif.cctrans[CPUID] = 1; 
 				end else begin
 					ccif.cctrans[CPUID] = 0;
@@ -737,6 +774,8 @@ module dcache (
 				ccif.dREN[CPUID] = 0;
 				ccif.dWEN[CPUID] = 0;
 				dpif.flushed = 0;
+				ccif.daddr[CPUID] = '0;
+      			ccif.dstore[CPUID] = '0;  
 
 				FLUSH_INDEX_INCREM_EN  = 0;
 				write_dirty = 0;
