@@ -1,18 +1,13 @@
-/*
-   Hazard Unit
-*/
-
-
 `include "hazard_unit_if.vh"
 
 module hazard_unit(
    hazard_unit_if.hzu hzif
 );
 
-    assign hzif.stall_ifid = !((!hzif.halt || hzif.branch_taken || hzif.jump) && !hzif.stall_idex);
-    assign hzif.stall_idex = !(!hzif.stall_xmem && !hzif.load) ;
-    assign hzif.stall_xmem = (!hzif.dhit && (hzif.dmemWEN || hzif.dmemREN));
-    assign hzif.stall_wb = hzif.stall_xmem;
+   assign hzif.stall_ifid = !((!hzif.halt || hzif.branch_taken || hzif.jump) && !hzif.stall_idex);
+   assign hzif.stall_idex = !(!hzif.stall_xmem && !hzif.load) ;
+   assign hzif.stall_xmem = (!hzif.dhit && (hzif.dmemWEN || hzif.dmemREN));
+   assign hzif.stall_wb = hzif.stall_xmem;
 
    always_comb begin
      hzif.flush_xmem = 0;

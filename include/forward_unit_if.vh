@@ -31,5 +31,3 @@ interface forward_unit_if;
   );
 endinterface
 `endif
-
-
