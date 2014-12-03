@@ -12,5 +12,5 @@ README
 .deps
 *.hex
 *.ver
-*wlf
+*wlft
 *.mtf
