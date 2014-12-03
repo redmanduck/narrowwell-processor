@@ -23,12 +23,35 @@ module caches (
 
   parameter CPUID = 0;
 
+
   word_t instr;
 
   // icache
-  icache #(16,CPUID) ICACHE(CLK, nRST, dcif, ccif);
+  icache #(16,CPUID) ICACHE(CLK,
+    nRST,
+    dcif, 
+    ccif.iwait[CPUID], 
+    ccif.iload[CPUID], 
+    ccif.iREN[CPUID], 
+    ccif.iaddr[CPUID]);
+  
   // dcache
-  dcache #(8,2,CPUID) DCACHE(CLK, nRST, dcif, ccif);
+  dcache #(8,2,CPUID) DCACHE(CLK, 
+     nRST, 
+     dcif, 
+     ccif.flushing[CPUID],
+     ccif.dstore[CPUID],
+     ccif.daddr[CPUID],
+     ccif.ccsnoopaddr[CPUID],
+     ccif.ccwrite[CPUID],
+     ccif.cctrans[CPUID],
+     ccif.ccwait[CPUID],
+     ccif.dwait[CPUID],
+     ccif.dWEN[CPUID],
+     ccif.dREN[CPUID],
+     ccif.ccinv[CPUID],
+     ccif.dload[CPUID]
+  );
 
 
 /*  // // single cycle instr saver (for memory ops)

@@ -7,7 +7,10 @@ import cpu_types_pkg::*;
 module icache (
   input logic CLK, nRST,
   datapath_cache_if.icache dpif,
-  cache_control_if.icache ccif
+  input logic iwait, 
+  input word_t iload,
+  output logic iREN,
+  output word_t iaddr
 );
 
   parameter total_set = 16;
@@ -42,8 +45,8 @@ module icache (
 
   assign dpif.ihit = (rq_tag == dtable[rq_index].tag) && dtable[rq_index].valid ? 1 : 0;
   assign dpif.imemload = dtable[rq_index].data;
-  assign ccif.iREN[CPUID] = !dpif.ihit && dpif.imemREN;
-  assign ccif.iaddr[CPUID] = dpif.imemaddr;
+  assign iREN = !dpif.ihit && dpif.imemREN;
+  assign iaddr = dpif.imemaddr;
 
   // always_ff @ (posedge CLK, negedge nRST) begin : cache_fsm
   //     if(!nRST) begin
@@ -65,7 +68,7 @@ module icache (
               CACHE_WEN = 1;
               x_tag = rq_tag;
               x_valid = 1;
-              x_data = ccif.iload[CPUID];
+              x_data = iload;
       end
      endcase
   end*/
@@ -86,11 +89,11 @@ module icache (
   //    next_state = state;
   //    if(state == fetch) begin
   //       next_state = fetch;
-  //       if(!ccif.iwait[CPUID]) begin
+  //       if(!iwait) begin
   //         next_state = idle;
   //       end
   //    end else if(state == idle) begin
-  //       if((!dcif.ihit) && (!ccif.iwait[CPUID])) begin
+  //       if((!dcif.ihit) && (!iwait)) begin
   //         next_state = fetch;
   //       end
   //    end
@@ -116,12 +119,12 @@ module icache (
         x_valid <= '0;
         x_data <= '0;
         x_index <= '0;
-    end else if (dpif.imemREN && (!dpif.ihit) && (!ccif.iwait[CPUID])) begin
+    end else if (dpif.imemREN && (!dpif.ihit) && (!iwait)) begin
         //state <= next_state;
         CACHE_WEN <= 1;
         x_tag <= rq_tag;
         x_valid <= 1;
-        x_data <= ccif.iload[CPUID];
+        x_data <= iload;
         x_index <= rq_index;
    end
   end
