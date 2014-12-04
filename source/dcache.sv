@@ -303,7 +303,6 @@ module dcache (
 			LRU <= '0; //LRU is initialized to 0
 		end else if(hit_out) begin
 			LRU[rq_index] <= next_lru; //LRU is switched out for whaterver the LRU should be next
-			$display("updating LRU at index %d to %d", rq_index, hit0);
 		end
 	end
 
@@ -321,8 +320,9 @@ module dcache (
 	always_comb begin: data_return_to_core
 		if(dpif.datomic && dpif.dmemWEN) begin
 			//Store conditonal
-			dpif.dmemload = {31'h0, SC_SUCCESS}; 
-		end if(hit0 == 1) begin
+			dpif.dmemload = SC_SUCCESS ? 32'h01 : '0;
+		//	dpif.dmemload = {31'h0, SC_SUCCESS}; 
+		end else if(hit0 == 1) begin
 			//If there is a hit on way 0
 			if(rq_blockoffset == 0) begin //and for block offset 0
 				dpif.dmemload = cway[0].dtable[rq_index].block[0:0]; //we load that
@@ -365,8 +365,8 @@ module dcache (
 		cctrans = 0; //assert cctrans when there is an MSI upgrade
 
 		/* Experimental */
-    //	dstore = '0;  
-   // 	daddr = '0;
+    	//	dstore = '0;  
+   		// 	daddr = '0;
 
     	next_linkr = linkr;  
 
@@ -576,11 +576,11 @@ module dcache (
 					next_lru = hit0;
 
 					if(dpif.dmemWEN == 1'b1) begin
-						/*if(dpif.dmemaddr == linkr.addr) begin
+						if(dpif.dmemaddr == linkr.addr) begin
 							//invalidate lock if there is a modification to
 							//that address by a non-atomic operation
 							next_linkr = '0;
-						end*/
+						end
 						//while sitting in cache
 						//and there is a hit
 						//and there is a write

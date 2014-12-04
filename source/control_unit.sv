@@ -24,17 +24,17 @@ module control_unit (
   assign cuif.rd = cuif.instruction[15:11];
   assign cuif.shamt = cuif.instruction[10:6];
 
-  assign cuif.MemWr = (cuif.opcode == SW ? 1 : 0);
-  assign cuif.MemRead = (cuif.opcode == LW || cuif.opcode == LUI ? 1 : 0);
+  assign cuif.MemWr = (cuif.opcode == SW || cuif.opcode == SC ? 1 : 0);
+  assign cuif.MemRead = (cuif.opcode == LW || cuif.opcode == LL || cuif.opcode == LUI ? 1 : 0);  //cuif.opcode == LUI??
 
   assign cuif.iREN = (cuif.opcode != HALT);
 
-  assign cuif.dREN = (cuif.MemToReg == 2'b1 ? 1 : 0);
+  assign cuif.dREN = (cuif.MemToReg == 2'b1 || cuif.opcode == LL ? 1 : 0);
   assign cuif.dWEN = cuif.MemWr;
 
  always_comb begin : REG_DST
     casez(cuif.opcode)
-      XORI, LW, ORI, ADDIU, ANDI, LUI, LW, SLTI, SLTIU: cuif.RegDst = 1;
+      XORI, LW, ORI, ADDIU, ANDI, LUI, LL, SLTI, SLTIU: cuif.RegDst = 1;
       JAL: cuif.RegDst = 2;
       RTYPE: cuif.RegDst = 0;
       default: cuif.RegDst = 1;
@@ -75,7 +75,7 @@ module control_unit (
   end
 
   always_comb begin : REGISTER_FILE_CONTROLS
-    if(cuif.opcode == LW) begin
+    if(cuif.opcode == LW || cuif.opcode == LL || cuif.opcode == SC) begin
       //always write to reg FROM Data Memory
       cuif.MemToReg = 1;
     end else if (cuif.opcode == JAL) begin
@@ -89,7 +89,7 @@ module control_unit (
 
   always_comb begin : REG_EN_CONTROL
 
-    if((cuif.opcode == RTYPE && cuif.opcode != JR) || cuif.opcode == JAL || cuif.opcode == ADDIU || cuif.opcode == ANDI || cuif.opcode == LUI || cuif.opcode == LW || cuif.opcode == ORI || cuif.opcode == SLTI || cuif.opcode == SLTIU ||  cuif.opcode == XORI) begin
+    if((cuif.opcode == RTYPE && cuif.opcode != JR) || cuif.opcode == JAL || cuif.opcode == ADDIU || cuif.opcode == ANDI || cuif.opcode == LUI || cuif.opcode == LW  || cuif.opcode == LL || cuif.opcode == SC || cuif.opcode == ORI || cuif.opcode == SLTI || cuif.opcode == SLTIU ||  cuif.opcode == XORI) begin
        cuif.RegWr = 1 & !(cuif.instruction == '0);
     end else begin
        //default, no write
@@ -102,7 +102,7 @@ module control_unit (
    always_comb begin : ALU_SRC
       casez (cuif.opcode)
           RTYPE: cuif.ALUSrc = 0;
-          ORI, ANDI, XORI, ADDIU, SLTI, SLTIU, SW, LW: cuif.ALUSrc = 1; 
+          ORI, ANDI, XORI, ADDIU, SLTI, SLTIU, SW, LW, LL, SC: cuif.ALUSrc = 1; 
           LUI: cuif.ALUSrc = 2;
           default: cuif.ALUSrc = 0;
       endcase
@@ -163,6 +163,8 @@ module control_unit (
         SLTI: cuif.ALUctr = ALU_SLT;
         SLTIU: cuif.ALUctr = ALU_SLTU;
         SW: cuif.ALUctr = ALU_ADD;
+        SC: cuif.ALUctr = ALU_ADD;
+        LL: cuif.ALUctr = ALU_ADD;
         XORI: cuif.ALUctr = ALU_XOR;
         default: cuif.ALUctr = ALU_ADD;
       endcase
