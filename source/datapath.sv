@@ -175,7 +175,7 @@ module datapath (
 
 
    always_comb begin : Forwarding_M
-      casez (fwif.forwardData)
+      casez (fwif.forwardData && fwif.wbRegWr)  //::::: Experimental :::: if there is no reg write then rfif.wdat is probably trash
         0: dpif.dmemstore = xmem.dmemstore_out; //TODO: add this 
         1: dpif.dmemstore = rfif.wdat;
         default: dpif.dmemstore = xmem.dmemstore_out;

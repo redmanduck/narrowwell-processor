@@ -9,9 +9,9 @@ module forward_unit(
     fw_if.forwardA = 0;
 
     //mem stage, register write
-    if (fw_if.memRegWr && (fw_if.mem_rd == fw_if.ex_rs)) begin
+    if (fw_if.memRegWr && (fw_if.mem_rd == fw_if.ex_rs) && (fw_if.ex_rs != 0)) begin
       fw_if.forwardA = 1; //forward ALU Output from stage MEM
-    end else if (fw_if.wbRegWr && (fw_if.wb_rd == fw_if.ex_rs)) begin
+    end else if (fw_if.wbRegWr && (fw_if.wb_rd == fw_if.ex_rs) && (fw_if.ex_rs != 0)) begin
       fw_if.forwardA = 2; //forward write back output to alu
     end
   end 
@@ -19,18 +19,18 @@ module forward_unit(
   logic MEM_PendingRegWrite, WBPendingRegWrite; 
 
   // register value changed when written back to memory at mem stage
-  assign MEM_PendingRegWrite = fw_if.memWr && (fw_if.mem_rd == fw_if.wb_rd);
+  assign MEM_PendingRegWrite = fw_if.memWr && (fw_if.mem_rd == fw_if.wb_rd) && (fw_if.wb_rd != 0);
   // register value changed when written back to memory at wb stage
-  assign WBPendingRegWrite = fw_if.wbRegWr && (fw_if.wb_rd == fw_if.mem_rt);
+  assign WBPendingRegWrite = fw_if.wbRegWr && (fw_if.wb_rd == fw_if.mem_rt) && (fw_if.mem_rt != 0);
 
   assign fw_if.forwardData = (MEM_PendingRegWrite || WBPendingRegWrite);
 
   always_comb begin
     fw_if.forwardB = 0;
 
-    if (fw_if.memRegWr && (fw_if.mem_rd == fw_if.ex_rt)) begin
+    if (fw_if.memRegWr && (fw_if.mem_rd == fw_if.ex_rt) && (fw_if.ex_rt != 0)) begin
       fw_if.forwardB = 1; // forward mem output to alu
-    end else if (fw_if.wbRegWr && (fw_if.wb_rd == fw_if.ex_rt)) begin
+    end else if (fw_if.wbRegWr && (fw_if.wb_rd == fw_if.ex_rt) && (fw_if.ex_rt != 0)) begin
       fw_if.forwardB = 2; // forward wb output to alu
     end
   end // end of always_comb
