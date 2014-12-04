@@ -29,7 +29,7 @@ module control_unit (
 
   assign cuif.iREN = (cuif.opcode != HALT);
 
-  assign cuif.dREN = (cuif.MemToReg == 2'b1 || cuif.opcode == LL ? 1 : 0);
+  assign cuif.dREN = (cuif.MemToReg == 2'b1 || cuif.opcode == LL ? 1 : 0) && !(cuif.opcode == SC);
   assign cuif.dWEN = cuif.MemWr;
 
  always_comb begin : REG_DST

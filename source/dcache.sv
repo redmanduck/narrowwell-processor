@@ -10,7 +10,7 @@ module dcache (
 		output logic flushing, 
 		output word_t dstore, daddr,
 		input word_t snoopaddr,
-		output word_t ccwrite, cctrans,
+		output logic ccwrite, cctrans,
 		input logic ccwait, dwait,
 		output logic dWEN, dREN,
 		input logic ccinv,
@@ -38,6 +38,7 @@ module dcache (
 	} LinkedReg;
 
 	logic [total_set - 1 : 0] LRU;
+	logic LINK_WRITE;
 
 	CacheWay [1:0] cway;
 	LinkedReg linkr;
@@ -309,7 +310,7 @@ module dcache (
 	always_ff @ (posedge CLK, negedge nRST) begin
 		if(!nRST) begin
 			linkr <= '0;
-		end else if(hit_out) begin
+		end else if(LINK_WRITE) begin
 			linkr <= next_linkr;
 		end
 	end
@@ -363,12 +364,11 @@ module dcache (
   	    SC_SUCCESS = 0;
 		ccwrite = 0; 
 		cctrans = 0; //assert cctrans when there is an MSI upgrade
-
+		LINK_WRITE = 0;
 		/* Experimental */
     	//	dstore = '0;  
    		// 	daddr = '0;
 
-    	next_linkr = linkr;  
 
     	/* End Experiment */
 
@@ -549,6 +549,7 @@ module dcache (
 				dWEN = 0;
 				daddr = '0;
       			dstore = '0;  
+    			
 
 				which_word = 0;
 				write_dirty = 0;
@@ -558,6 +559,7 @@ module dcache (
 				if(dpif.datomic) begin
 					if(dpif.dmemREN) begin : LL
 						//Load Link
+						LINK_WRITE = 1;
 						next_linkr.addr = dpif.dmemaddr;
 						next_linkr.valid = 1;
 					end else if (dpif.dmemWEN) begin : SC
@@ -565,9 +567,11 @@ module dcache (
 						if(linkr.valid && (dpif.dmemaddr == linkr.addr)) begin
 							SC_SUCCESS = 1;
 							next_linkr = '0; //clear link
+							LINK_WRITE = 1;
 						end else begin
 							SC_SUCCESS = 0;
 							next_linkr = '0; //clear link
+							LINK_WRITE = 1;
 						end
 					end
 				end 
@@ -580,6 +584,7 @@ module dcache (
 							//invalidate lock if there is a modification to
 							//that address by a non-atomic operation
 							next_linkr = '0;
+							LINK_WRITE = 1;
 						end
 						//while sitting in cache
 						//and there is a hit
