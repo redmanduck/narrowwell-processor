@@ -204,11 +204,20 @@ module dcache (
    end
  end
 
+ always_ff @(posedge CLK, negedge nRST) begin : hitwait_incrementer
+    if(!nRST || ((dpif.dmemWEN || dpif.dmemREN) && state == idle)) begin
+      hit_wait_count_next = 0;
+    end else if(state != next_state) begin
+      hit_wait_count_next = hit_wait_count + 1;
+    end
+ end
+
+
+
   always_comb begin : output_logic_fsm
     CACHE_WEN = 0;
     dpif.flushed = 0;
     hitcount_next = hitcount;
-    hit_wait_count_next = hit_wait_count + 1;
     next_lru = LRU[rq_index];
 
     casez(state)
@@ -314,7 +323,6 @@ module dcache (
             ccif.dREN[CPUID] = 0;
             ccif.dWEN[CPUID] = 0;
             ccif.daddr[CPUID] = '0;
-            hit_wait_count_next = 0;
             which_word = 0;
             write_dirty = 0;
             write_valid = 0;
@@ -469,7 +477,7 @@ module dcache (
     end else begin
         state <= next_state;
         hitcount <= hitcount_next;
-        hit_wait_count <= hit_wait_count_next;
+        hit_wait_count <= hit_wait_count_next; //LET hit wait count be the transition be the count of state change after dmemWEN|dmemREN
     end
   end
 
